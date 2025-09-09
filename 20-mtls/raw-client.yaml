@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: no-mesh
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: raw-client
+  namespace: no-mesh
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:8.9.1
+      command: ["sleep","infinity"]
+

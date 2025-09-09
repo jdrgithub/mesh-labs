@@ -1,0 +1,8 @@
+# A seperate namespace keeps mesh experiements isolated
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mesh-demo
+  labels:
+    # This single label is the "opt-in" switch for auto sidecar injection.
+    istio-injection: "enabled"

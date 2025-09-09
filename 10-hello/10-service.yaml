@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello
+  namespace: mesh-demo
+spec:
+  selector:
+    app: hello
+  # In Istio, Service port names mater
+  # naming a port http tells Istio's Envoy proxies
+  # to treat it as HTTP at L7
+  # ( so later we do routing, retries, JWT, etc)
+  # Without a name or with non-protocol name 
+  # Istio treast as TCP
+  ports:
+  - name: http  # Critical: name the port "http" for L7 features later
+    port: 8080
+    targetPort: 8080
