@@ -1,0 +1,29 @@
+# Test client for service mesh validation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-client
+  namespace: mesh-demo
+  labels:
+    app: test-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-client
+  template:
+    metadata:
+      labels:
+        app: test-client
+    spec:
+      containers:
+      - name: curl
+        image: curlimages/curl:8.9.1
+        command: ["sleep", "infinity"]
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "64Mi"
+            cpu: "50m"

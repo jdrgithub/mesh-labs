@@ -1,3 +1,4 @@
+# Permissive mTLS configuration for gradual migration
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:

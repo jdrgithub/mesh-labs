@@ -1,0 +1,15 @@
+# Allow test client to access hello service
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-test-client
+  namespace: mesh-demo
+spec:
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/mesh-demo/sa/default"]
+    to:
+    - operation:
+        methods: ["GET", "POST"]
+        paths: ["/", "/healthz"]

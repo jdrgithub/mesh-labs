@@ -1,0 +1,18 @@
+# Virtual service for gateway routing
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hello-gateway
+  namespace: mesh-demo
+spec:
+  hosts:
+  - hello.local
+  - "*"
+  gateways:
+  - hello-gateway
+  http:
+  - route:
+    - destination:
+        host: hello
+        subset: v1
+      weight: 100

@@ -1,0 +1,76 @@
+# Mesh Labs Project Log
+# Comprehensive Istio Service Mesh Tutorial
+
+## Project Overview
+Building a professional-grade Istio service mesh tutorial with incremental lessons demonstrating core concepts.
+
+## Lesson 3: Traffic Splitting (Canary Routing)
+Goal: Route N% of traffic to v2 using only mesh config (no app code changes)
+
+### Actions Taken:
+
+1. **Project Analysis** - Analyzed existing project structure:
+   - Namespace: mesh-demo with istio-injection enabled
+   - Service: hello (port 8080, named "http" for L7 features)
+   - Deployment: hello-v1 with ealen/echo-server image
+   - Client: curl pod for testing
+
+2. **Starting Lesson 3 Implementation** - Creating canary routing setup
+
+3. **Lesson 3.1 - Deploy hello-v2** - Created deployment for v2
+   - Deployed second version of hello service with version: v2 label
+   - Same image and configuration as v1 for zero-downtime deployment testing
+
+4. **Lesson 3.2 - DestinationRule** - Created destination rule configuration
+   - Defined subsets v1 and v2 based on version labels
+   - Enables fine-grained traffic control between versions
+
+5. **Lesson 3.3 - VirtualService Weighted Routing** - Created multiple routing configurations:
+   - Weighted routing configurations for traffic splitting
+   - Various traffic distribution patterns (90/10, 50/50, 0/100, 100/0)
+
+6. **Lesson 3.4 - Clean Traffic Switching** - Implemented zero-downtime deployment patterns
+   - Gradual traffic shifting from v1 to v2
+   - Instant rollback capability
+   - No application code changes required
+
+7. **Comprehensive README Creation** - Created detailed tutorial documentation
+   - Step-by-step instructions for all 8 lessons
+   - Verification commands and expected results
+   - Troubleshooting guide and common issues
+   - Professional-grade documentation with best practices
+
+8. **Project Structure Completed** - Organized all files with clear naming conventions
+   - Numbered directories for logical progression
+   - Self-documenting YAML files with inline comments
+   - Consistent metadata and labeling across resources
+
+9. **Professional Project Restructure** - Transformed from tutorial format to production-ready project
+   - Created manifests/base/ directory for core Kubernetes resources
+   - Created configs/ directory with organized Istio configurations
+   - Created scripts/ directory with automated deployment and testing tools
+   - Created docs/ directory with comprehensive documentation
+   - Added Makefile for common operations and automation
+
+10. **Production-Ready Features Implemented**:
+    - Resource limits and health checks for all deployments
+    - Comprehensive error handling and validation
+    - Automated deployment scripts with multiple configuration options
+    - Professional testing framework with traffic distribution analysis
+    - Monitoring and debugging tools with continuous monitoring capability
+    - Security-first approach with deny-by-default authorization
+    - Circuit breaker and outlier detection for resilience
+    - Canary deployment patterns with header-based routing
+
+11. **Documentation Created**:
+    - ARCHITECTURE.md: Detailed system architecture and design patterns
+    - DEPLOYMENT.md: Comprehensive deployment guide and troubleshooting
+    - Updated README.md: Professional project overview with usage examples
+    - Self-documenting code with inline comments throughout
+
+12. **Automation and Tooling**:
+    - deploy.sh: Automated deployment with multiple configuration options
+    - test.sh: Comprehensive testing framework with traffic analysis
+    - monitor.sh: Monitoring and debugging tools
+    - Makefile: Common operations and shortcuts
+    - All scripts include proper error handling and colored output

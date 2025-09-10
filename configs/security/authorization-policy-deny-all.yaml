@@ -1,0 +1,9 @@
+# Deny-all authorization policy for security-first approach
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: mesh-demo
+spec:
+  # Empty rules means deny all
+  rules: []
