@@ -1,0 +1,23 @@
+# Header-based routing - route based on user header
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: reviews
+  namespace: mesh-demo
+spec:
+  hosts:
+  - reviews
+  http:
+  - match:
+    - headers:
+        end-user:
+          exact: jason
+    route:
+    - destination:
+        host: reviews
+        subset: v2
+  - route:
+    - destination:
+        host: reviews
+        subset: v1
+      weight: 100

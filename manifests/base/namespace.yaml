@@ -1,10 +1,6 @@
-# Base namespace configuration for mesh-demo
 apiVersion: v1
 kind: Namespace
 metadata:
   name: mesh-demo
   labels:
-    # Enable automatic sidecar injection for all pods in this namespace
     istio-injection: "enabled"
-    # Environment label for configuration management
-    environment: "base"

@@ -1,0 +1,23 @@
+# Fault injection - 50% HTTP 500 errors
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ratings
+  namespace: mesh-demo
+spec:
+  hosts:
+  - ratings
+  http:
+  - fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 5s
+      abort:
+        percentage:
+          value: 10
+        httpStatus: 500
+    route:
+    - destination:
+        host: ratings
+        subset: v1

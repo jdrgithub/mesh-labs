@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: productpage-v1
+  namespace: mesh-demo
+  labels:
+    app: productpage
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: productpage
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: productpage
+        version: v1
+    spec:
+      containers:
+      - name: productpage
+        image: docker.io/istio/examples-bookinfo-productpage-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: details-v1
+  namespace: mesh-demo
+  labels:
+    app: details
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: details
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: details
+        version: v1
+    spec:
+      containers:
+      - name: details
+        image: docker.io/istio/examples-bookinfo-details-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews-v1
+  namespace: mesh-demo
+  labels:
+    app: reviews
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reviews
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v1
+    spec:
+      containers:
+      - name: reviews
+        image: docker.io/istio/examples-bookinfo-reviews-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratings-v1
+  namespace: mesh-demo
+  labels:
+    app: ratings
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ratings
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: ratings
+        version: v1
+    spec:
+      containers:
+      - name: ratings
+        image: docker.io/istio/examples-bookinfo-ratings-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
+

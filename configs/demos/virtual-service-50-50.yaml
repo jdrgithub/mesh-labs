@@ -1,0 +1,19 @@
+# 50/50 traffic split between v1 and v2
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: reviews
+  namespace: mesh-demo
+spec:
+  hosts:
+  - reviews
+  http:
+  - route:
+    - destination:
+        host: reviews
+        subset: v1
+      weight: 50
+    - destination:
+        host: reviews
+        subset: v2
+      weight: 50

@@ -1,6 +1,6 @@
-# Minimal Service Mesh Setup
+# Minimal Bookinfo Service Mesh Setup
 
-This guide shows how to set up the most basic Istio service mesh configuration using only the essential components from this project.
+This guide shows how to set up the most basic Istio service mesh configuration using the Bookinfo demo application.
 
 ## Prerequisites
 
@@ -10,8 +10,8 @@ This guide shows how to set up the most basic Istio service mesh configuration u
 
 ## Step 1: Create Namespace with Sidecar Injection
 
+Create `namespace.yaml`:
 ```yaml
-# namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -24,94 +24,232 @@ metadata:
 kubectl apply -f namespace.yaml
 ```
 
-## Step 2: Deploy Basic Service
+## Step 2: Deploy Bookinfo Services
 
+Create `services.yaml`:
 ```yaml
-# service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: hello
+  name: productpage
   namespace: mesh-demo
   labels:
-    app: hello
+    app: productpage
 spec:
   selector:
-    app: hello
+    app: productpage
   ports:
   - name: http
-    port: 8080
-    targetPort: 8080
+    port: 9080
+    targetPort: 9080
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: details
+  namespace: mesh-demo
+  labels:
+    app: details
+spec:
+  selector:
+    app: details
+  ports:
+  - name: http
+    port: 9080
+    targetPort: 9080
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reviews
+  namespace: mesh-demo
+  labels:
+    app: reviews
+spec:
+  selector:
+    app: reviews
+  ports:
+  - name: http
+    port: 9080
+    targetPort: 9080
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ratings
+  namespace: mesh-demo
+  labels:
+    app: ratings
+spec:
+  selector:
+    app: ratings
+  ports:
+  - name: http
+    port: 9080
+    targetPort: 9080
     protocol: TCP
   type: ClusterIP
 ```
 
 ```bash
-kubectl apply -f service.yaml
+kubectl apply -f services.yaml
 ```
 
-## Step 3: Deploy Application
+## Step 3: Deploy Bookinfo Applications
 
+Create `deployments.yaml`:
 ```yaml
-# deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello-v1
+  name: productpage-v1
   namespace: mesh-demo
   labels:
-    app: hello
+    app: productpage
     version: v1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: hello
+      app: productpage
       version: v1
   template:
     metadata:
       labels:
-        app: hello
+        app: productpage
         version: v1
     spec:
       containers:
-      - name: hello
-        image: ealen/echo-server:latest
+      - name: productpage
+        image: docker.io/istio/examples-bookinfo-productpage-v1:1.17.0
         ports:
-        - containerPort: 8080
+        - containerPort: 9080
           name: http
-        env:
-        - name: PORT
-          value: "8080"
         resources:
           requests:
-            memory: "64Mi"
-            cpu: "50m"
+            memory: "4Mi"
+            cpu: "1m"
           limits:
-            memory: "128Mi"
-            cpu: "100m"
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
+            memory: "8Mi"
+            cpu: "10m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: details-v1
+  namespace: mesh-demo
+  labels:
+    app: details
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: details
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: details
+        version: v1
+    spec:
+      containers:
+      - name: details
+        image: docker.io/istio/examples-bookinfo-details-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews-v1
+  namespace: mesh-demo
+  labels:
+    app: reviews
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reviews
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v1
+    spec:
+      containers:
+      - name: reviews
+        image: docker.io/istio/examples-bookinfo-reviews-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratings-v1
+  namespace: mesh-demo
+  labels:
+    app: ratings
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ratings
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: ratings
+        version: v1
+    spec:
+      containers:
+      - name: ratings
+        image: docker.io/istio/examples-bookinfo-ratings-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
 ```
 
 ```bash
-kubectl apply -f deployment.yaml
+kubectl apply -f deployments.yaml
 ```
 
 ## Step 4: Deploy Test Client
 
+Create `test-client.yaml`:
 ```yaml
-# test-client.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -135,11 +273,11 @@ spec:
         command: ["sleep", "infinity"]
         resources:
           requests:
-            memory: "32Mi"
-            cpu: "25m"
+            memory: "2Mi"
+            cpu: "1m"
           limits:
-            memory: "64Mi"
-            cpu: "50m"
+            memory: "4Mi"
+            cpu: "5m"
 ```
 
 ```bash
@@ -149,21 +287,27 @@ kubectl apply -f test-client.yaml
 ## Step 5: Wait for Deployment
 
 ```bash
-kubectl wait --for=condition=available --timeout=300s deployment/hello-v1 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n mesh-demo
 kubectl wait --for=condition=available --timeout=300s deployment/test-client -n mesh-demo
 ```
 
 ## Step 6: Test the Service Mesh
 
 ```bash
-# Test basic connectivity
-kubectl exec -n mesh-demo deployment/test-client -- curl -s hello:8080
+# Test basic connectivity to productpage
+kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080
+
+# Test full bookinfo flow
+kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
 
 # Check that sidecars are injected
 kubectl get pods -n mesh-demo
 
 # Verify Istio sidecar is running (should show 2/2 containers)
-kubectl describe pod -n mesh-demo -l app=hello
+kubectl describe pod -n mesh-demo -l app=productpage
 ```
 
 ## What You Get
@@ -174,7 +318,7 @@ With this minimal setup, you have:
 2. **Service Discovery**: Services can find each other by name
 3. **Basic Observability**: Istio automatically collects metrics and traces
 4. **mTLS**: Automatic mutual TLS between services (permissive mode)
-5. **Health Checks**: Liveness and readiness probes
+5. **Bookinfo Demo**: Complete microservices application for testing
 
 ## Verification Commands
 
@@ -186,19 +330,10 @@ kubectl get pods -n mesh-demo
 kubectl get svc -n mesh-demo
 
 # Test connectivity
-kubectl exec -n mesh-demo deployment/test-client -- curl -s hello:8080
+kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080
 
 # Check sidecar injection
 kubectl get pods -n mesh-demo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
-```
-
-## One-Command Deployment
-
-You can also use the project's deployment script for minimal setup:
-
-```bash
-# Deploy with minimal configuration (no security/gateway)
-./scripts/deploy.sh --no-security --no-gateway
 ```
 
 ## Next Steps
@@ -210,4 +345,4 @@ Once you have the basic service mesh working, you can add:
 - **Observability**: Gateway and external access
 - **Canary Deployments**: Multiple service versions with traffic splitting
 
-See the main [README.md](../README.md) for advanced configurations.
+See [OPENSHIFT-SETUP.md](OPENSHIFT-SETUP.md) for OpenShift-specific setup or [ISTIO-SETUP.md](ISTIO-SETUP.md) for standard Istio installation.

@@ -1,14 +1,15 @@
-# Mesh Demo - Production-Ready Istio Service Mesh
+# Mesh Labs - Bookinfo Service Mesh Demo
 
-A comprehensive, production-ready Istio service mesh demonstration project showcasing enterprise-grade patterns for microservices deployment, traffic management, security, and observability.
+A comprehensive Istio service mesh demonstration project using the Bookinfo microservices application. This project showcases service mesh patterns for microservices deployment, traffic management, security, and observability.
 
 ## Features
 
-- **Traffic Management**: Canary deployments, weighted routing, circuit breakers
-- **Security**: mTLS, authorization policies, SPIFFE identity
+- **Bookinfo Demo**: Complete microservices application (productpage, details, reviews, ratings)
+- **Traffic Management**: Gateway, destination rules, virtual services
+- **Security**: mTLS, authorization policies
 - **Observability**: Metrics, logging, distributed tracing
-- **Automation**: Deployment scripts, testing framework, monitoring tools
-- **Production Ready**: Resource limits, health checks, best practices
+- **Multiple Platforms**: Standard Kubernetes and OpenShift support
+- **Self-Documenting**: Clear YAML manifests and step-by-step guides
 
 ## Prerequisites
 
@@ -20,14 +21,18 @@ A comprehensive, production-ready Istio service mesh demonstration project showc
 ## Quick Start
 
 ```bash
-# Deploy the complete application
-make deploy
+# Deploy Bookinfo application
+kubectl apply -f manifests/base/
 
-# Run tests to verify deployment
-make test
+# Wait for deployments
+kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/test-client -n mesh-demo
 
-# Monitor the application
-make monitor
+# Test the application
+kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
 ```
 
 ## Project Structure
@@ -35,56 +40,63 @@ make monitor
 ```
 mesh-labs/
 ├── manifests/
-│   └── base/                    # Core Kubernetes resources
-│       ├── namespace.yaml       # Namespace with sidecar injection
-│       ├── service.yaml         # Hello service definition
-│       ├── deployment-v1.yaml   # Hello service version 1
-│       ├── deployment-v2.yaml   # Hello service version 2
-│       └── test-client.yaml     # Test client for validation
+│   └── base/                           # Core Kubernetes resources
+│       ├── namespace.yaml              # Namespace with sidecar injection
+│       ├── services.yaml               # All Bookinfo services
+│       ├── deployments.yaml            # All Bookinfo applications
+│       └── test-client.yaml            # Test client for validation
 ├── configs/
-│   ├── traffic/                 # Traffic management
-│   │   ├── destination-rule.yaml
-│   │   ├── virtual-service-canary.yaml
-│   │   └── virtual-service-production.yaml
-│   ├── mtls/                   # mTLS configuration
+│   ├── traffic/                        # Traffic management
+│   │   ├── gateway.yaml                # Istio gateway
+│   │   ├── destination-rules.yaml      # Service subsets
+│   │   └── virtual-service.yaml        # Routing rules
+│   ├── mtls/                          # mTLS configuration
 │   │   ├── peer-authentication-permissive.yaml
 │   │   └── peer-authentication-strict.yaml
-│   ├── security/               # Authorization policies
+│   ├── security/                      # Authorization policies
 │   │   ├── authorization-policy-deny-all.yaml
 │   │   └── authorization-policy-allow-test-client.yaml
-│   └── observability/          # Gateway and monitoring
+│   └── observability/                 # Gateway and monitoring
 │       ├── gateway.yaml
 │       └── virtual-service-gateway.yaml
 ├── scripts/
-│   ├── deploy.sh               # Automated deployment
-│   ├── test.sh                 # Comprehensive testing
-│   └── monitor.sh              # Monitoring and debugging
+│   ├── deploy.sh                      # Automated deployment
+│   ├── test.sh                        # Comprehensive testing
+│   └── monitor.sh                     # Monitoring and debugging
 ├── docs/
-│   ├── ARCHITECTURE.md         # System architecture
-│   └── DEPLOYMENT.md           # Detailed deployment guide
-├── Makefile                    # Common operations
-└── README.md                   # This file
+│   ├── README.md                      # Demo overview and index
+│   ├── 01-mTLS.md                     # mTLS demo
+│   ├── 02-Destination-Rules.md        # Destination rules demo
+│   ├── 03-Traffic-Routing.md          # Traffic routing demo
+│   ├── 04-Gateway.md                  # Gateway demo
+│   ├── 05-Observability.md            # Observability demo
+│   ├── 06-Fault-Injection.md          # Fault injection demo
+│   ├── MINIMAL.md                     # Minimal setup guide
+│   ├── ISTIO-SETUP.md                 # Standard Istio installation
+│   └── OPENSHIFT-SETUP.md             # OpenShift setup guide
+├── Makefile                           # Common operations
+└── README.md                          # This file
 ```
 
-## Core Concepts
+## Learning Demos
 
-### Traffic Management
-- **Canary Deployments**: Gradual traffic shifting between service versions
-- **Weighted Routing**: Control traffic distribution using VirtualService
-- **Circuit Breakers**: Automatic failure handling and recovery
-- **Header-based Routing**: Route traffic based on request headers
+This project provides hands-on demos for learning service mesh concepts:
 
-### Security
-- **mTLS**: Mutual TLS encryption between services
-- **Authorization Policies**: Fine-grained access control
-- **SPIFFE Identity**: Secure service identification
-- **Deny-by-default**: Security-first approach
+### [📚 Demo Index](docs/README.md)
+Complete overview of all available demos and learning path.
 
-### Observability
-- **Metrics**: Request rates, latencies, error rates
-- **Logging**: Centralized access and application logs
-- **Tracing**: Distributed request tracing
-- **Health Checks**: Automated service health monitoring
+### Individual Demos
+- **[🔒 mTLS Demo](docs/01-mTLS.md)** - Learn mutual TLS encryption
+- **[🎯 Destination Rules Demo](docs/02-Destination-Rules.md)** - Understand traffic policies
+- **[🚦 Traffic Routing Demo](docs/03-Traffic-Routing.md)** - Master canary deployments
+- **[🌐 Gateway Demo](docs/04-Gateway.md)** - Expose services externally
+- **[📊 Observability Demo](docs/05-Observability.md)** - Visualize with Kiali & Jaeger
+- **[💥 Fault Injection Demo](docs/06-Fault-Injection.md)** - Test application resilience
+
+### Setup Guides
+- **[⚡ Minimal Setup](docs/MINIMAL.md)** - Quick Bookinfo deployment
+- **[🔧 Istio Installation](docs/ISTIO-SETUP.md)** - Standard Istio setup
+- **[🔴 OpenShift Setup](docs/OPENSHIFT-SETUP.md)** - OpenShift-specific setup
 
 ## Usage Examples
 

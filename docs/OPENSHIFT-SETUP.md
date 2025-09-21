@@ -151,66 +151,126 @@ oc get smmr -n istio-system
 oc describe smmr default -n istio-system
 ```
 
-## Step 5: Deploy Basic Service
+## Step 5: Deploy Bookinfo Services
 
-Create `service.yaml`:
+Create `productpage-service.yaml`:
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: hello
+  name: productpage
   namespace: mesh-demo
   labels:
-    app: hello
+    app: productpage
 spec:
   selector:
-    app: hello
+    app: productpage
   ports:
   - name: http
-    port: 8080
-    targetPort: 8080
+    port: 9080
+    targetPort: 9080
+    protocol: TCP
+  type: ClusterIP
+```
+
+Create `details-service.yaml`:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: details
+  namespace: mesh-demo
+  labels:
+    app: details
+spec:
+  selector:
+    app: details
+  ports:
+  - name: http
+    port: 9080
+    targetPort: 9080
+    protocol: TCP
+  type: ClusterIP
+```
+
+Create `reviews-service.yaml`:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: reviews
+  namespace: mesh-demo
+  labels:
+    app: reviews
+spec:
+  selector:
+    app: reviews
+  ports:
+  - name: http
+    port: 9080
+    targetPort: 9080
+    protocol: TCP
+  type: ClusterIP
+```
+
+Create `ratings-service.yaml`:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ratings
+  namespace: mesh-demo
+  labels:
+    app: ratings
+spec:
+  selector:
+    app: ratings
+  ports:
+  - name: http
+    port: 9080
+    targetPort: 9080
     protocol: TCP
   type: ClusterIP
 ```
 
 ```bash
-# Apply the service
-oc apply -f service.yaml
+# Apply all services
+oc apply -f productpage-service.yaml
+oc apply -f details-service.yaml
+oc apply -f reviews-service.yaml
+oc apply -f ratings-service.yaml
 ```
 
-## Step 6: Deploy Application
+## Step 6: Deploy Bookinfo Applications
 
-Create `deployment.yaml`:
+Create `productpage-deployment.yaml`:
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello-v1
+  name: productpage-v1
   namespace: mesh-demo
   labels:
-    app: hello
+    app: productpage
     version: v1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: hello
+      app: productpage
       version: v1
   template:
     metadata:
       labels:
-        app: hello
+        app: productpage
         version: v1
     spec:
       containers:
-      - name: hello
-        image: ealen/echo-server:latest
+      - name: productpage
+        image: docker.io/istio/examples-bookinfo-productpage-v1:1.17.0
         ports:
-        - containerPort: 8080
+        - containerPort: 9080
           name: http
-        env:
-        - name: PORT
-          value: "8080"
         resources:
           requests:
             memory: "4Mi"
@@ -218,26 +278,287 @@ spec:
           limits:
             memory: "8Mi"
             cpu: "10m"
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
+```
+
+Create `details-deployment.yaml`:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: details-v1
+  namespace: mesh-demo
+  labels:
+    app: details
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: details
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: details
+        version: v1
+    spec:
+      containers:
+      - name: details
+        image: docker.io/istio/examples-bookinfo-details-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
+```
+
+Create `reviews-deployment.yaml`:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews-v1
+  namespace: mesh-demo
+  labels:
+    app: reviews
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reviews
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v1
+    spec:
+      containers:
+      - name: reviews
+        image: docker.io/istio/examples-bookinfo-reviews-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
+```
+
+Create `ratings-deployment.yaml`:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratings-v1
+  namespace: mesh-demo
+  labels:
+    app: ratings
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ratings
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: ratings
+        version: v1
+    spec:
+      containers:
+      - name: ratings
+        image: docker.io/istio/examples-bookinfo-ratings-v1:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
 ```
 
 ```bash
-# Apply the deployment
-oc apply -f deployment.yaml
+# Apply all deployments
+oc apply -f productpage-deployment.yaml
+oc apply -f details-deployment.yaml
+oc apply -f reviews-deployment.yaml
+oc apply -f ratings-deployment.yaml
 ```
 
-## Step 7: Deploy Test Client
+## Step 7: Deploy Istio Gateway
+
+Create `gateway.yaml`:
+```yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: bookinfo-gateway
+  namespace: mesh-demo
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+```
+
+```bash
+# Apply the gateway
+oc apply -f gateway.yaml
+```
+
+## Step 8: Deploy Destination Rules
+
+Create `destination-rules.yaml`:
+```yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: productpage
+  namespace: mesh-demo
+spec:
+  host: productpage
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: reviews
+  namespace: mesh-demo
+spec:
+  host: reviews
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+  - name: v3
+    labels:
+      version: v3
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ratings
+  namespace: mesh-demo
+spec:
+  host: ratings
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: details
+  namespace: mesh-demo
+spec:
+  host: details
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+```
+
+```bash
+# Apply destination rules
+oc apply -f destination-rules.yaml
+```
+
+## Step 9: Deploy Virtual Service
+
+Create `virtual-service.yaml`:
+```yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: bookinfo
+  namespace: mesh-demo
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - bookinfo-gateway
+  http:
+  - match:
+    - uri:
+        exact: /productpage
+    - uri:
+        prefix: /static
+    - uri:
+        exact: /login
+    - uri:
+        exact: /logout
+    - uri:
+        prefix: /api/v1/products
+    route:
+    - destination:
+        host: productpage
+        port:
+          number: 9080
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: reviews
+  namespace: mesh-demo
+spec:
+  hosts:
+  - reviews
+  http:
+  - route:
+    - destination:
+        host: reviews
+        subset: v1
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ratings
+  namespace: mesh-demo
+spec:
+  hosts:
+  - ratings
+  http:
+  - route:
+    - destination:
+        host: ratings
+        subset: v1
+```
+
+```bash
+# Apply virtual services
+oc apply -f virtual-service.yaml
+```
+
+## Step 10: Deploy Test Client
 
 Create `test-client.yaml`:
 ```yaml
@@ -276,38 +597,41 @@ spec:
 oc apply -f test-client.yaml
 ```
 
-## Step 8: Wait for Deployment
+## Step 11: Wait for Deployment
 
 ```bash
 # Wait for deployments to be ready
-oc wait --for=condition=available --timeout=300s deployment/hello-v1 -n mesh-demo
+oc wait --for=condition=available --timeout=300s deployment/productpage-v1 -n mesh-demo
+oc wait --for=condition=available --timeout=300s deployment/details-v1 -n mesh-demo
+oc wait --for=condition=available --timeout=300s deployment/reviews-v1 -n mesh-demo
+oc wait --for=condition=available --timeout=300s deployment/ratings-v1 -n mesh-demo
 oc wait --for=condition=available --timeout=300s deployment/test-client -n mesh-demo
 ```
 
-## Step 9: Test the Service Mesh
+## Step 12: Test the Service Mesh
 
 ```bash
-# Test basic connectivity
-oc exec -n mesh-demo deployment/test-client -- curl -s hello:8080
+# Test basic connectivity to productpage
+oc exec -n mesh-demo deployment/test-client -- curl -s productpage:9080
 
 # Check that sidecars are injected
 oc get pods -n mesh-demo
 
 # Verify Istio sidecar is running (should show 2/2 containers)
-oc describe pod -n mesh-demo -l app=hello
+oc describe pod -n mesh-demo -l app=productpage
 ```
 
-## Step 10: Create OpenShift Route (Optional)
+## Step 13: Create OpenShift Route (Optional)
 
 ```bash
-# Create route for external access
-oc expose service hello -n mesh-demo
+# Create route for external access to productpage
+oc expose service productpage -n mesh-demo
 
 # Get the route URL
-oc get route hello -n mesh-demo
+oc get route productpage -n mesh-demo
 
 # Test external access
-curl http://$(oc get route hello -n mesh-demo -o jsonpath='{.spec.host}')
+curl http://$(oc get route productpage -n mesh-demo -o jsonpath='{.spec.host}')
 ```
 
 ## Verification Commands
@@ -322,8 +646,11 @@ oc get svc -n mesh-demo
 # Check routes
 oc get route -n mesh-demo
 
-# Test connectivity
-oc exec -n mesh-demo deployment/test-client -- curl -s hello:8080
+# Test connectivity to productpage
+oc exec -n mesh-demo deployment/test-client -- curl -s productpage:9080
+
+# Test full bookinfo flow
+oc exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
 
 # Check sidecar injection
 oc get pods -n mesh-demo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'

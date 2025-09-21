@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews-v3
+  namespace: mesh-demo
+  labels:
+    app: reviews
+    version: v3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reviews
+      version: v3
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v3
+    spec:
+      containers:
+      - name: reviews
+        image: docker.io/istio/examples-bookinfo-reviews-v3:1.17.0
+        ports:
+        - containerPort: 9080
+          name: http
+        resources:
+          requests:
+            memory: "4Mi"
+            cpu: "1m"
+          limits:
+            memory: "8Mi"
+            cpu: "10m"
