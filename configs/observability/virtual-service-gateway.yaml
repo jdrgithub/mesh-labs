@@ -2,17 +2,17 @@
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: hello-gateway
-  namespace: mesh-demo
+  name: bookinfo-gateway
+  namespace: bookinfo
 spec:
   hosts:
-  - hello.local
+  - bookinfo.local
   - "*"
   gateways:
-  - hello-gateway
+  - bookinfo-gateway
   http:
   - route:
     - destination:
-        host: hello
+        host: productpage
         subset: v1
       weight: 100

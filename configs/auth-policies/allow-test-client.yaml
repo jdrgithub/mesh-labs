@@ -1,0 +1,21 @@
+# Allow test client to access productpage service
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-test-client
+  namespace: bookinfo
+spec:
+  selector:
+    matchLabels:
+      app: productpage
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/bookinfo/sa/default"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/productpage*"]
+    when:
+    - key: source.namespace
+      values: ["bookinfo"]

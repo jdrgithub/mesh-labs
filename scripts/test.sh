@@ -1,9 +1,9 @@
 #!/bin/bash
-# Test script for mesh-demo application
+# Test script for bookinfo application
 
 set -e
 
-NAMESPACE="mesh-demo"
+NAMESPACE="bookinfo"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Colors for output
@@ -42,7 +42,7 @@ test_basic_connectivity() {
         return 1
     fi
     
-    local response=$(kubectl exec -n "$NAMESPACE" "$pod" -- curl -s -w "%{http_code}" hello:8080/ -o /dev/null)
+    local response=$(kubectl exec -n "$NAMESPACE" "$pod" -- curl -s -w "%{http_code}" productpage:9080/productpage -o /dev/null)
     
     if [ "$response" = "200" ]; then
         log "Basic connectivity test passed"
@@ -63,15 +63,15 @@ test_traffic_distribution() {
     
     local results=$(kubectl exec -n "$NAMESPACE" "$pod" -- sh -c "
         for i in \$(seq 1 $count); do
-            curl -s hello:8080/ | grep -o '\"hostname\":\"[^\"]*\"' | cut -d'\"' -f4
+            curl -s productpage:9080/productpage | grep -o '\"hostname\":\"[^\"]*\"' | cut -d'\"' -f4
         done | sort | uniq -c
     ")
     
     echo "$results"
     
     # Check if we have traffic to both versions
-    local v1_count=$(echo "$results" | grep "hello-v1" | awk '{print $1}' || echo "0")
-    local v2_count=$(echo "$results" | grep "hello-v2" | awk '{print $1}' || echo "0")
+    local v1_count=$(echo "$results" | grep "reviews-v1" | awk '{print $1}' || echo "0")
+    local v2_count=$(echo "$results" | grep "reviews-v2" | awk '{print $1}' || echo "0")
     
     if [ "$v1_count" -gt 0 ] && [ "$v2_count" -gt 0 ]; then
         log "Traffic distribution test passed (v1: $v1_count, v2: $v2_count)"
@@ -84,7 +84,7 @@ test_mtls() {
     info "Testing mTLS configuration..."
     
     local pod=$(get_test_client_pod)
-    local response=$(kubectl exec -n "$NAMESPACE" "$pod" -- curl -s -I hello:8080/ | grep -i "x-forwarded-client-cert" || echo "")
+    local response=$(kubectl exec -n "$NAMESPACE" "$pod" -- curl -s -I productpage:9080/productpage | grep -i "x-forwarded-client-cert" || echo "")
     
     if [ -n "$response" ]; then
         log "mTLS test passed - client certificate present"
@@ -97,7 +97,7 @@ test_authorization() {
     info "Testing authorization policies..."
     
     local pod=$(get_test_client_pod)
-    local response=$(kubectl exec -n "$NAMESPACE" "$pod" -- curl -s -w "%{http_code}" hello:8080/ -o /dev/null)
+    local response=$(kubectl exec -n "$NAMESPACE" "$pod" -- curl -s -w "%{http_code}" productpage:9080/productpage -o /dev/null)
     
     if [ "$response" = "200" ]; then
         log "Authorization test passed - access allowed"
@@ -119,7 +119,7 @@ test_gateway() {
     fi
     
     if [ -n "$gateway_ip" ]; then
-        local response=$(curl -s -w "%{http_code}" -H "Host: hello.local" "http://$gateway_ip/" -o /dev/null || echo "000")
+        local response=$(curl -s -w "%{http_code}" -H "Host: bookinfo.local" "http://$gateway_ip/" -o /dev/null || echo "000")
         
         if [ "$response" = "200" ]; then
             log "Gateway test passed"
@@ -135,9 +135,9 @@ test_canary_header() {
     info "Testing canary header routing..."
     
     local pod=$(get_test_client_pod)
-    local response=$(kubectl exec -n "$NAMESPACE" "$pod" -- curl -s -H "canary: true" hello:8080/ | grep -o '\"hostname\":\"[^\"]*\"' | cut -d'\"' -f4)
+    local response=$(kubectl exec -n "$NAMESPACE" "$pod" -- curl -s -H "canary: true" productpage:9080/productpage | grep -o '\"hostname\":\"[^\"]*\"' | cut -d'\"' -f4)
     
-    if [[ "$response" == *"hello-v2"* ]]; then
+    if [[ "$response" == *"reviews-v2"* ]]; then
         log "Canary header test passed - routed to v2"
     else
         warn "Canary header test failed - not routed to v2 (got: $response)"
@@ -155,7 +155,7 @@ run_load_test() {
     local start_time=$(date +%s)
     kubectl exec -n "$NAMESPACE" "$pod" -- sh -c "
         for i in \$(seq 1 $count); do
-            curl -s hello:8080/ > /dev/null
+            curl -s productpage:9080/productpage > /dev/null
         done
     "
     local end_time=$(date +%s)
@@ -210,7 +210,7 @@ main() {
         esac
     done
     
-    log "Starting mesh-demo tests..."
+    log "Starting bookinfo tests..."
     
     test_basic_connectivity
     test_traffic_distribution "$traffic_count"

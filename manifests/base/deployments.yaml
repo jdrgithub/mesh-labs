@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: productpage-v1
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: productpage
     version: v1
@@ -26,17 +26,17 @@ spec:
           name: http
         resources:
           requests:
-            memory: "4Mi"
+            memory: "32Mi"
             cpu: "1m"
           limits:
-            memory: "8Mi"
+            memory: "64Mi"
             cpu: "10m"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: details-v1
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: details
     version: v1
@@ -60,17 +60,17 @@ spec:
           name: http
         resources:
           requests:
-            memory: "4Mi"
+            memory: "32Mi"
             cpu: "1m"
           limits:
-            memory: "8Mi"
+            memory: "64Mi"
             cpu: "10m"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: reviews-v1
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: reviews
     version: v1
@@ -94,17 +94,17 @@ spec:
           name: http
         resources:
           requests:
-            memory: "4Mi"
+            memory: "32Mi"
             cpu: "1m"
           limits:
-            memory: "8Mi"
+            memory: "64Mi"
             cpu: "10m"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ratings-v1
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: ratings
     version: v1
@@ -128,9 +128,9 @@ spec:
           name: http
         resources:
           requests:
-            memory: "4Mi"
+            memory: "32Mi"
             cpu: "1m"
           limits:
-            memory: "8Mi"
+            memory: "64Mi"
             cpu: "10m"
 

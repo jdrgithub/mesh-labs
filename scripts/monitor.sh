@@ -1,9 +1,9 @@
 #!/bin/bash
-# Monitoring script for mesh-demo application
+# Monitoring script for bookinfo application
 
 set -e
 
-NAMESPACE="mesh-demo"
+NAMESPACE="bookinfo"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Colors for output
@@ -53,7 +53,7 @@ show_traffic_metrics() {
     local pod=$(kubectl get pods -n "$NAMESPACE" -l app=test-client -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
     
     if [ -n "$pod" ]; then
-        kubectl exec -n "$NAMESPACE" "$pod" -- curl -s localhost:15000/stats | grep -E "(hello|cluster)" | head -20
+        kubectl exec -n "$NAMESPACE" "$pod" -- curl -s localhost:15000/stats | grep -E "(productpage|reviews|details|ratings|cluster)" | head -20
     else
         warn "Test client pod not found - cannot show traffic metrics"
     fi
@@ -62,7 +62,7 @@ show_traffic_metrics() {
 
 show_mtls_status() {
     info "mTLS Status:"
-    istioctl authn tls-check hello."$NAMESPACE".svc.cluster.local 2>/dev/null || warn "Could not check mTLS status"
+    istioctl authn tls-check productpage."$NAMESPACE".svc.cluster.local 2>/dev/null || warn "Could not check mTLS status"
     echo ""
 }
 
@@ -79,7 +79,7 @@ show_gateway_status() {
 }
 
 show_logs() {
-    local service=${1:-hello}
+    local service=${1:-productpage}
     local lines=${2:-50}
     
     info "Recent logs for $service (last $lines lines):"
@@ -107,7 +107,7 @@ show_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  --logs [SERVICE] [LINES]  Show logs for service (default: hello, 50 lines)"
+    echo "  --logs [SERVICE] [LINES]  Show logs for service (default: productpage, 50 lines)"
     echo "  --continuous              Start continuous monitoring"
     echo "  --mtls                    Show mTLS status"
     echo "  --auth                    Show authorization status"
@@ -118,13 +118,13 @@ show_usage() {
     echo "Examples:"
     echo "  $0                        # Show basic status"
     echo "  $0 --continuous           # Start continuous monitoring"
-    echo "  $0 --logs hello 100       # Show 100 lines of hello service logs"
+    echo "  $0 --logs productpage 100 # Show 100 lines of productpage service logs"
     echo "  $0 --mtls --auth          # Show mTLS and authorization status"
 }
 
 main() {
     local show_logs_flag=false
-    local service="hello"
+    local service="productpage"
     local lines=50
     local continuous=false
     local show_mtls=false

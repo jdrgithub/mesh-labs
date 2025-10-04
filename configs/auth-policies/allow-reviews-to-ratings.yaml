@@ -1,0 +1,21 @@
+# Allow reviews service to access ratings service using SPIFFE identity
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-reviews-to-ratings
+  namespace: bookinfo
+spec:
+  selector:
+    matchLabels:
+      app: ratings
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/bookinfo/sa/default"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/ratings/*"]
+    when:
+    - key: source.namespace
+      values: ["bookinfo"]

@@ -17,11 +17,11 @@ Learn how Istio automatically encrypts service-to-service communication.
 kubectl apply -f manifests/base/
 
 # Wait for deployments
-kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/test-client -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/test-client -n bookinfo
 ```
 
 ## Demo Steps
@@ -29,13 +29,13 @@ kubectl wait --for=condition=available --timeout=300s deployment/test-client -n 
 ### Step 1: Check Current mTLS Status
 ```bash
 # Check mTLS status for productpage service
-istioctl authn tls-check productpage.mesh-demo.svc.cluster.local
+istioctl authn tls-check productpage.bookinfo.svc.cluster.local
 ```
 
 ### Step 2: Test Service Communication
 ```bash
 # Test basic communication between services
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 ```
 
 ### Step 3: Apply Permissive mTLS (Default)
@@ -44,16 +44,16 @@ kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/pro
 kubectl apply -f configs/mtls/peer-authentication-permissive.yaml
 
 # Verify the configuration
-kubectl get peerauthentication -n mesh-demo
+kubectl get peerauthentication -n bookinfo
 ```
 
 ### Step 4: Test with Permissive mTLS
 ```bash
 # Test communication (should work)
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 
 # Check mTLS status again
-istioctl authn tls-check productpage.mesh-demo.svc.cluster.local
+istioctl authn tls-check productpage.bookinfo.svc.cluster.local
 ```
 
 ### Step 5: Switch to Strict mTLS
@@ -62,16 +62,16 @@ istioctl authn tls-check productpage.mesh-demo.svc.cluster.local
 kubectl apply -f configs/mtls/peer-authentication-strict.yaml
 
 # Verify the configuration
-kubectl get peerauthentication -n mesh-demo
+kubectl get peerauthentication -n bookinfo
 ```
 
 ### Step 6: Test with Strict mTLS
 ```bash
 # Test communication (should still work with sidecars)
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 
 # Check mTLS status
-istioctl authn tls-check productpage.mesh-demo.svc.cluster.local
+istioctl authn tls-check productpage.bookinfo.svc.cluster.local
 ```
 
 ## What You Should See
@@ -89,11 +89,11 @@ kubectl delete -f configs/mtls/ --ignore-not-found=true
 ## Troubleshooting
 ```bash
 # Check if sidecars are injected
-kubectl get pods -n mesh-demo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
+kubectl get pods -n bookinfo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
 
 # Check peer authentication
-kubectl get peerauthentication -n mesh-demo
+kubectl get peerauthentication -n bookinfo
 
 # Check mTLS status for all services
-istioctl authn tls-check -n mesh-demo
+istioctl authn tls-check -n bookinfo
 ```

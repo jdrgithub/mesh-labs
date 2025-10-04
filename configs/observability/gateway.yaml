@@ -2,8 +2,8 @@
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
-  name: hello-gateway
-  namespace: mesh-demo
+  name: bookinfo-gateway
+  namespace: bookinfo
 spec:
   selector:
     istio: ingressgateway
@@ -13,5 +13,5 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - hello.local
+    - bookinfo.local
     - "*"

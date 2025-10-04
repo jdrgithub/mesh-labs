@@ -12,6 +12,7 @@ This directory contains step-by-step demos for learning Istio service mesh conce
 | [04-Gateway.md](04-Gateway.md) | External access | 15 min | Istio gateway |
 | [05-Observability.md](05-Observability.md) | Kiali & Jaeger | 20 min | Kiali & Jaeger installed |
 | [06-Fault-Injection.md](06-Fault-Injection.md) | Resilience testing | 15 min | Basic setup |
+| [07-Authorization-Policies.md](07-Authorization-Policies.md) | SPIFFE-based access control | 20 min | mTLS enabled |
 
 ## Quick Start
 
@@ -40,6 +41,7 @@ For a complete learning experience, run demos in order:
 4. **Gateway** - Expose services externally
 5. **Observability** - Visualize and trace requests
 6. **Fault Injection** - Test resilience
+7. **Authorization Policies** - SPIFFE-based access control
 
 ## Each Demo Includes
 

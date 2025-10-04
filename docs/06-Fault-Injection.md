@@ -21,11 +21,11 @@ kubectl apply -f manifests/base/
 kubectl apply -f configs/traffic/
 
 # Wait for deployments
-kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/test-client -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/test-client -n bookinfo
 ```
 
 ## Demo Steps
@@ -33,12 +33,12 @@ kubectl wait --for=condition=available --timeout=300s deployment/test-client -n 
 ### Step 1: Test Normal Operation
 ```bash
 # Test normal operation
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 
 # Test multiple requests
 for i in {1..5}; do
   echo "Request $i:"
-  kubectl exec -n mesh-demo deployment/test-client -- curl -s -w "HTTP Status: %{http_code}\n" productpage:9080/productpage | tail -1
+  kubectl exec -n bookinfo deployment/test-client -- curl -s -w "HTTP Status: %{http_code}\n" productpage:9080/productpage | tail -1
 done
 ```
 
@@ -48,7 +48,7 @@ done
 kubectl apply -f configs/demos/virtual-service-fault-injection.yaml
 
 # Check the configuration
-kubectl get virtualservice ratings -n mesh-demo -o yaml
+kubectl get virtualservice ratings -n bookinfo -o yaml
 ```
 
 ### Step 3: Test Fault Tolerance
@@ -56,17 +56,17 @@ kubectl get virtualservice ratings -n mesh-demo -o yaml
 # Test with fault injection
 for i in {1..10}; do
   echo "Request $i:"
-  kubectl exec -n mesh-demo deployment/test-client -- curl -s -w "HTTP Status: %{http_code}\n" productpage:9080/productpage | tail -1
+  kubectl exec -n bookinfo deployment/test-client -- curl -s -w "HTTP Status: %{http_code}\n" productpage:9080/productpage | tail -1
 done
 ```
 
 ### Step 4: Observe Behavior
 ```bash
 # Check if circuit breaker activates
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 
 # Check service logs
-kubectl logs -n mesh-demo -l app=productpage --tail=10
+kubectl logs -n bookinfo -l app=productpage --tail=10
 ```
 
 ### Step 5: Remove Fault Injection
@@ -75,7 +75,7 @@ kubectl logs -n mesh-demo -l app=productpage --tail=10
 kubectl delete -f configs/demos/virtual-service-fault-injection.yaml
 
 # Test normal operation again
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 ```
 
 ## What You Should See
@@ -124,14 +124,14 @@ kubectl delete -f configs/traffic/ --ignore-not-found=true
 ## Troubleshooting
 ```bash
 # Check virtual services
-kubectl get virtualservice -n mesh-demo
+kubectl get virtualservice -n bookinfo
 
 # Check destination rules
-kubectl get destinationrule -n mesh-demo
+kubectl get destinationrule -n bookinfo
 
 # Check service logs
-kubectl logs -n mesh-demo -l app=productpage --tail=20
+kubectl logs -n bookinfo -l app=productpage --tail=20
 
 # Check service status
-kubectl get pods -n mesh-demo
+kubectl get pods -n bookinfo
 ```

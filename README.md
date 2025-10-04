@@ -1,6 +1,6 @@
 # Mesh Labs - Bookinfo Service Mesh Demo
 
-A comprehensive Istio service mesh demonstration project using the Bookinfo microservices application. This project showcases service mesh patterns for microservices deployment, traffic management, security, and observability.
+A comprehensive, self-documenting service mesh learning project using the Bookinfo demo application on k3s. This project provides hands-on experience with Istio service mesh concepts through practical demos and clear documentation for local development.
 
 ## Features
 
@@ -8,14 +8,15 @@ A comprehensive Istio service mesh demonstration project using the Bookinfo micr
 - **Traffic Management**: Gateway, destination rules, virtual services
 - **Security**: mTLS, authorization policies
 - **Observability**: Metrics, logging, distributed tracing
-- **Multiple Platforms**: Standard Kubernetes and OpenShift support
+- **Local Development**: Optimized for k3s and local Kubernetes
 - **Self-Documenting**: Clear YAML manifests and step-by-step guides
 
 ## Prerequisites
 
-- Kubernetes cluster (v1.21+)
+- k3s cluster running locally
 - Istio installed and configured
-- `kubectl` configured to access your cluster
+- `kubectl` configured to access your k3s cluster
+- `istioctl` installed
 - `make` utility (optional, for using Makefile)
 
 ## Quick Start
@@ -25,14 +26,14 @@ A comprehensive Istio service mesh demonstration project using the Bookinfo micr
 kubectl apply -f manifests/base/
 
 # Wait for deployments
-kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/test-client -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/test-client -n bookinfo
 
 # Test the application
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 ```
 
 ## Project Structure
@@ -73,7 +74,6 @@ mesh-labs/
 │   ├── 06-Fault-Injection.md          # Fault injection demo
 │   ├── MINIMAL.md                     # Minimal setup guide
 │   ├── ISTIO-SETUP.md                 # Standard Istio installation
-│   └── OPENSHIFT-SETUP.md             # OpenShift setup guide
 ├── Makefile                           # Common operations
 └── README.md                          # This file
 ```
@@ -92,11 +92,12 @@ Complete overview of all available demos and learning path.
 - **[🌐 Gateway Demo](docs/04-Gateway.md)** - Expose services externally
 - **[📊 Observability Demo](docs/05-Observability.md)** - Visualize with Kiali & Jaeger
 - **[💥 Fault Injection Demo](docs/06-Fault-Injection.md)** - Test application resilience
+- **[🔐 Authorization Policies Demo](docs/07-Authorization-Policies.md)** - SPIFFE-based access control
+- **[🔍 Istioctl Deep Dive](docs/ISTIOCTL-DEEP-DIVE.md)** - Understand the service mesh under the hood
 
 ### Setup Guides
 - **[⚡ Minimal Setup](docs/MINIMAL.md)** - Quick Bookinfo deployment
 - **[🔧 Istio Installation](docs/ISTIO-SETUP.md)** - Standard Istio setup
-- **[🔴 OpenShift Setup](docs/OPENSHIFT-SETUP.md)** - OpenShift-specific setup
 
 ## Usage Examples
 
@@ -190,7 +191,7 @@ make shell
 make clean
 
 # Or manually
-kubectl delete namespace mesh-demo
+kubectl delete namespace bookinfo
 ```
 
 ## Contributing

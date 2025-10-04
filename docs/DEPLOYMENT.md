@@ -80,7 +80,7 @@ make deploy-minimal
 kubectl apply -f manifests/base/
 
 # Verify pods are running
-kubectl get pods -n mesh-demo
+kubectl get pods -n bookinfo
 ```
 
 ### 2. Traffic Configuration
@@ -89,7 +89,7 @@ kubectl get pods -n mesh-demo
 kubectl apply -f configs/traffic/
 
 # Check traffic routing
-kubectl get virtualservice,destinationrule -n mesh-demo
+kubectl get virtualservice,destinationrule -n bookinfo
 ```
 
 ### 3. Security Configuration
@@ -114,10 +114,10 @@ kubectl apply -f configs/observability/
 ### Basic Connectivity Test
 ```bash
 # Get test client pod
-CLIENT_POD=$(kubectl get pods -n mesh-demo -l app=test-client -o jsonpath='{.items[0].metadata.name}')
+CLIENT_POD=$(kubectl get pods -n bookinfo -l app=test-client -o jsonpath='{.items[0].metadata.name}')
 
 # Test connectivity
-kubectl exec -n mesh-demo $CLIENT_POD -- curl -s hello:8080/
+kubectl exec -n bookinfo $CLIENT_POD -- curl -s productpage:9080/productpage
 ```
 
 ### Traffic Distribution Test
@@ -127,7 +127,7 @@ make test-traffic
 
 # Or manually
 for i in {1..20}; do
-  kubectl exec -n mesh-demo $CLIENT_POD -- curl -s hello:8080/ | jq -r '.hostname'
+  kubectl exec -n bookinfo $CLIENT_POD -- curl -s productpage:9080/productpage | jq -r '.hostname'
 done | sort | uniq -c
 ```
 
@@ -137,13 +137,13 @@ done | sort | uniq -c
 make check-mtls
 
 # Or manually
-istioctl authn tls-check hello.mesh-demo.svc.cluster.local
+istioctl authn tls-check productpage.bookinfo.svc.cluster.local
 ```
 
 ### Authorization Test
 ```bash
 # Test authorization policies
-kubectl exec -n mesh-demo $CLIENT_POD -- curl -s -w "%{http_code}" hello:8080/
+kubectl exec -n bookinfo $CLIENT_POD -- curl -s -w "%{http_code}" productpage:9080/productpage
 ```
 
 ## Traffic Management
@@ -165,7 +165,7 @@ kubectl apply -f configs/traffic/virtual-service-production.yaml
 ### Test Canary Header Routing
 ```bash
 # Route to v2 using canary header
-kubectl exec -n mesh-demo $CLIENT_POD -- curl -s -H "canary: true" hello:8080/
+kubectl exec -n bookinfo $CLIENT_POD -- curl -s -H "canary: true" productpage:9080/productpage
 ```
 
 ## Monitoring and Debugging
@@ -179,7 +179,7 @@ make logs
 make logs-proxy
 
 # Specific service logs
-kubectl logs -n mesh-demo -l app=hello --tail=100
+kubectl logs -n bookinfo -l app=productpage --tail=100
 ```
 
 ### Check Status
@@ -207,7 +207,7 @@ make port-forward
 make shell
 
 # Or specific pod
-kubectl exec -n mesh-demo -it deployment/test-client -- sh
+kubectl exec -n bookinfo -it deployment/test-client -- sh
 ```
 
 ## Troubleshooting
@@ -217,40 +217,40 @@ kubectl exec -n mesh-demo -it deployment/test-client -- sh
 #### Pods Not Starting
 ```bash
 # Check pod status
-kubectl describe pod -n mesh-demo <pod-name>
+kubectl describe pod -n bookinfo <pod-name>
 
 # Check events
-kubectl get events -n mesh-demo --sort-by='.lastTimestamp'
+kubectl get events -n bookinfo --sort-by='.lastTimestamp'
 ```
 
 #### Traffic Not Routing
 ```bash
 # Check VirtualService
-kubectl get virtualservice -n mesh-demo -o yaml
+kubectl get virtualservice -n bookinfo -o yaml
 
 # Check DestinationRule
-kubectl get destinationrule -n mesh-demo -o yaml
+kubectl get destinationrule -n bookinfo -o yaml
 
 # Check proxy configuration
-istioctl proxy-config route -n mesh-demo <pod-name>
+istioctl proxy-config route -n bookinfo <pod-name>
 ```
 
 #### mTLS Issues
 ```bash
 # Check mTLS configuration
-kubectl get peerauthentication -n mesh-demo -o yaml
+kubectl get peerauthentication -n bookinfo -o yaml
 
 # Verify mTLS status
-istioctl authn tls-check hello.mesh-demo.svc.cluster.local
+istioctl authn tls-check productpage.bookinfo.svc.cluster.local
 ```
 
 #### Authorization Problems
 ```bash
 # Check authorization policies
-kubectl get authorizationpolicy -n mesh-demo -o yaml
+kubectl get authorizationpolicy -n bookinfo -o yaml
 
 # Check proxy logs for authz
-kubectl logs -n mesh-demo -l app=hello -c istio-proxy | grep authz
+kubectl logs -n bookinfo -l app=productpage -c istio-proxy | grep authz
 ```
 
 ### Validation Commands
@@ -273,7 +273,7 @@ istioctl version
 make clean
 
 # Or manually
-kubectl delete namespace mesh-demo
+kubectl delete namespace bookinfo
 ```
 
 ### Remove Configurations Only

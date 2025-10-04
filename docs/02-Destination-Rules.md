@@ -19,8 +19,8 @@ kubectl apply -f manifests/demos/reviews-v2-deployment.yaml
 kubectl apply -f manifests/demos/reviews-v3-deployment.yaml
 
 # Wait for deployments
-kubectl wait --for=condition=available --timeout=300s deployment/reviews-v2 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/reviews-v3 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v2 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v3 -n bookinfo
 ```
 
 ## Demo Steps
@@ -31,13 +31,13 @@ kubectl wait --for=condition=available --timeout=300s deployment/reviews-v3 -n m
 kubectl apply -f configs/traffic/destination-rules.yaml
 
 # View the destination rules
-kubectl get destinationrule -n mesh-demo
+kubectl get destinationrule -n bookinfo
 ```
 
 ### Step 2: Examine Destination Rules
 ```bash
 # View detailed destination rules
-kubectl get destinationrule -n mesh-demo -o yaml
+kubectl get destinationrule -n bookinfo -o yaml
 ```
 
 ### Step 3: Test Load Balancing
@@ -45,17 +45,17 @@ kubectl get destinationrule -n mesh-demo -o yaml
 # Generate multiple requests to see load balancing
 for i in {1..10}; do
   echo "Request $i:"
-  kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage | grep -o "reviews-v[0-9]" || echo "No version found"
+  kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage | grep -o "reviews-v[0-9]" || echo "No version found"
 done
 ```
 
 ### Step 4: Check Service Endpoints
 ```bash
 # Check which endpoints are available
-kubectl get endpoints -n mesh-demo
+kubectl get endpoints -n bookinfo
 
 # Check specific service endpoints
-kubectl get endpoints reviews -n mesh-demo -o yaml
+kubectl get endpoints reviews -n bookinfo -o yaml
 ```
 
 ## What You Should See
@@ -106,11 +106,11 @@ kubectl delete -f configs/traffic/destination-rules.yaml --ignore-not-found=true
 ## Troubleshooting
 ```bash
 # Check destination rules
-kubectl get destinationrule -n mesh-demo
+kubectl get destinationrule -n bookinfo
 
 # Check service endpoints
-kubectl get endpoints -n mesh-demo
+kubectl get endpoints -n bookinfo
 
 # Check pod labels
-kubectl get pods -n mesh-demo --show-labels
+kubectl get pods -n bookinfo --show-labels
 ```

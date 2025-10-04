@@ -1,9 +1,9 @@
 #!/bin/bash
-# Deployment script for mesh-demo application
+# Deployment script for bookinfo application
 
 set -e
 
-NAMESPACE="mesh-demo"
+NAMESPACE="bookinfo"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
@@ -49,8 +49,10 @@ check_prerequisites() {
 deploy_base() {
     log "Deploying base manifests..."
     kubectl apply -f "$PROJECT_ROOT/manifests/base/"
-    kubectl wait --for=condition=available --timeout=300s deployment/hello-v1 -n "$NAMESPACE"
-    kubectl wait --for=condition=available --timeout=300s deployment/hello-v2 -n "$NAMESPACE"
+    kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n "$NAMESPACE"
+    kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n "$NAMESPACE"
+    kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n "$NAMESPACE"
+    kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n "$NAMESPACE"
     kubectl wait --for=condition=available --timeout=300s deployment/test-client -n "$NAMESPACE"
     log "Base deployment completed"
 }

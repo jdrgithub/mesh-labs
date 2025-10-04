@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-client
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: test-client
 spec:

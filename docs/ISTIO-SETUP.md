@@ -1,11 +1,12 @@
-# Minimal Istio Installation and Setup
+# Istio Installation for k3s
 
-This guide covers the essential steps to install and configure Istio for the minimal service mesh demo.
+This guide covers installing and configuring Istio on your local k3s cluster for the service mesh demos.
 
 ## Prerequisites
 
-- Kubernetes cluster (v1.21+)
-- `kubectl` configured to access your cluster
+- k3s cluster running locally
+- `kubectl` configured to access your k3s cluster
+- `istioctl` installed
 - `curl` or `wget` for downloading Istio
 
 ## Step 1: Download Istio
@@ -38,8 +39,8 @@ kubectl get pods -n istio-system
 kubectl label namespace default istio-injection=enabled
 
 # Or create a dedicated namespace with injection enabled
-kubectl create namespace mesh-demo
-kubectl label namespace mesh-demo istio-injection=enabled
+kubectl create namespace bookinfo
+kubectl label namespace bookinfo istio-injection=enabled
 ```
 
 ## Step 4: Verify Istio Installation
@@ -110,7 +111,7 @@ kubectl logs -n istio-system -l app=istiod
 
 ### Check Sidecar Injection
 ```bash
-kubectl get pods -n mesh-demo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
+kubectl get pods -n bookinfo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
 ```
 
 ### Common Issues
@@ -118,10 +119,10 @@ kubectl get pods -n mesh-demo -o jsonpath='{range .items[*]}{.metadata.name}{"\t
 **Issue**: Pods not getting sidecars
 ```bash
 # Check namespace label
-kubectl get namespace mesh-demo --show-labels
+kubectl get namespace bookinfo --show-labels
 
 # Re-label if needed
-kubectl label namespace mesh-demo istio-injection=enabled --overwrite
+kubectl label namespace bookinfo istio-injection=enabled --overwrite
 ```
 
 **Issue**: istioctl not found

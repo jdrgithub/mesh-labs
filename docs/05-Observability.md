@@ -43,7 +43,7 @@ echo "Default login: admin/admin"
 ```bash
 # Generate traffic for visualization
 for i in {1..50}; do
-  kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage > /dev/null
+  kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage > /dev/null
 done
 
 echo "Traffic generated for Kiali visualization"
@@ -53,7 +53,7 @@ echo "Traffic generated for Kiali visualization"
 ```bash
 # In Kiali UI:
 # 1. Go to Graph
-# 2. Select mesh-demo namespace
+# 2. Select bookinfo namespace
 # 3. View service topology
 # 4. Observe request flow
 ```
@@ -71,7 +71,7 @@ echo "Open http://localhost:16686 in your browser"
 ```bash
 # Generate requests with tracing headers
 for i in {1..20}; do
-  kubectl exec -n mesh-demo deployment/test-client -- curl -s -H "x-b3-traceid: $(openssl rand -hex 16)" productpage:9080/productpage > /dev/null
+  kubectl exec -n bookinfo deployment/test-client -- curl -s -H "x-b3-traceid: $(openssl rand -hex 16)" productpage:9080/productpage > /dev/null
 done
 
 echo "Traced requests generated for Jaeger"
@@ -130,8 +130,8 @@ kubectl get pods -n istio-system | grep kiali
 kubectl get pods -n istio-system | grep jaeger
 
 # Check if tracing is enabled
-kubectl get pods -n mesh-demo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
+kubectl get pods -n bookinfo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
 
 # Check service mesh status
-kubectl get pods -n mesh-demo
+kubectl get pods -n bookinfo
 ```

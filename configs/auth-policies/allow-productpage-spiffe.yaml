@@ -1,0 +1,44 @@
+# Allow productpage service to access other services using SPIFFE identity
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-productpage-spiffe
+  namespace: bookinfo
+spec:
+  selector:
+    matchLabels:
+      app: productpage
+  rules:
+  # Allow productpage to access details service
+  - from:
+    - source:
+        principals: ["cluster.local/ns/bookinfo/sa/default"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/details/*"]
+    when:
+    - key: source.namespace
+      values: ["bookinfo"]
+  # Allow productpage to access reviews service
+  - from:
+    - source:
+        principals: ["cluster.local/ns/bookinfo/sa/default"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/reviews/*"]
+    when:
+    - key: source.namespace
+      values: ["bookinfo"]
+  # Allow productpage to access ratings service
+  - from:
+    - source:
+        principals: ["cluster.local/ns/bookinfo/sa/default"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/ratings/*"]
+    when:
+    - key: source.namespace
+      values: ["bookinfo"]

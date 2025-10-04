@@ -2,7 +2,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   name: productpage
-  namespace: mesh-demo
+  namespace: bookinfo
 spec:
   host: productpage
   subsets:
@@ -14,7 +14,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   name: reviews
-  namespace: mesh-demo
+  namespace: bookinfo
 spec:
   host: reviews
   subsets:
@@ -32,7 +32,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   name: ratings
-  namespace: mesh-demo
+  namespace: bookinfo
 spec:
   host: ratings
   subsets:
@@ -47,7 +47,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   name: details
-  namespace: mesh-demo
+  namespace: bookinfo
 spec:
   host: details
   subsets:

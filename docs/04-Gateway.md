@@ -47,7 +47,7 @@ kubectl apply -f configs/traffic/gateway.yaml
 kubectl apply -f configs/traffic/virtual-service.yaml
 
 # Check gateway configuration
-kubectl get gateway -n mesh-demo
+kubectl get gateway -n bookinfo
 ```
 
 ### Step 3: Get External Access
@@ -150,6 +150,6 @@ kubectl get svc -n istio-system | grep gateway
 kubectl logs -n istio-system -l app=istio-proxy --tail=20
 
 # Check gateway configuration
-kubectl get gateway -n mesh-demo
-kubectl describe gateway bookinfo-gateway -n mesh-demo
+kubectl get gateway -n bookinfo
+kubectl describe gateway bookinfo-gateway -n bookinfo
 ```

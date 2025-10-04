@@ -22,8 +22,8 @@ kubectl apply -f manifests/demos/reviews-v3-deployment.yaml
 kubectl apply -f configs/traffic/destination-rules.yaml
 
 # Wait for deployments
-kubectl wait --for=condition=available --timeout=300s deployment/reviews-v2 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/reviews-v3 -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v2 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v3 -n bookinfo
 ```
 
 ## Demo Steps
@@ -34,7 +34,7 @@ kubectl wait --for=condition=available --timeout=300s deployment/reviews-v3 -n m
 kubectl apply -f configs/traffic/virtual-service.yaml
 
 # Test traffic routing
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 ```
 
 ### Step 2: Canary Deployment (90% v1, 10% v2)
@@ -45,7 +45,7 @@ kubectl apply -f configs/demos/virtual-service-canary.yaml
 # Test traffic distribution
 for i in {1..10}; do
   echo "Request $i:"
-  kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage | grep -o "reviews-v[0-9]" || echo "No version found"
+  kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage | grep -o "reviews-v[0-9]" || echo "No version found"
 done
 ```
 
@@ -57,7 +57,7 @@ kubectl apply -f configs/demos/virtual-service-50-50.yaml
 # Test traffic distribution
 for i in {1..10}; do
   echo "Request $i:"
-  kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage | grep -o "reviews-v[0-9]" || echo "No version found"
+  kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage | grep -o "reviews-v[0-9]" || echo "No version found"
 done
 ```
 
@@ -67,7 +67,7 @@ done
 kubectl apply -f configs/demos/virtual-service-100-v2.yaml
 
 # Test traffic routing
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 ```
 
 ### Step 5: Header-Based Routing
@@ -77,11 +77,11 @@ kubectl apply -f configs/demos/virtual-service-header-routing.yaml
 
 # Test without header (goes to v1)
 echo "Without header (should go to v1):"
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage | grep -o "reviews-v[0-9]"
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage | grep -o "reviews-v[0-9]"
 
 # Test with jason header (goes to v2)
 echo "With jason header (should go to v2):"
-kubectl exec -n mesh-demo deployment/test-client -- curl -s -H "end-user: jason" productpage:9080/productpage | grep -o "reviews-v[0-9]"
+kubectl exec -n bookinfo deployment/test-client -- curl -s -H "end-user: jason" productpage:9080/productpage | grep -o "reviews-v[0-9]"
 ```
 
 ## What You Should See
@@ -130,11 +130,11 @@ kubectl delete -f configs/traffic/virtual-service.yaml --ignore-not-found=true
 ## Troubleshooting
 ```bash
 # Check virtual services
-kubectl get virtualservice -n mesh-demo
+kubectl get virtualservice -n bookinfo
 
 # Check destination rules
-kubectl get destinationrule -n mesh-demo
+kubectl get destinationrule -n bookinfo
 
 # Check service endpoints
-kubectl get endpoints -n mesh-demo
+kubectl get endpoints -n bookinfo
 ```

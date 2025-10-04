@@ -15,7 +15,7 @@ Create `namespace.yaml`:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: mesh-demo
+  name: bookinfo
   labels:
     istio-injection: "enabled"
 ```
@@ -32,7 +32,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: productpage
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: productpage
 spec:
@@ -49,7 +49,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: details
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: details
 spec:
@@ -66,7 +66,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: reviews
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: reviews
 spec:
@@ -83,7 +83,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ratings
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: ratings
 spec:
@@ -109,7 +109,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: productpage-v1
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: productpage
     version: v1
@@ -143,7 +143,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: details-v1
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: details
     version: v1
@@ -177,7 +177,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: reviews-v1
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: reviews
     version: v1
@@ -211,7 +211,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ratings-v1
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: ratings
     version: v1
@@ -254,7 +254,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-client
-  namespace: mesh-demo
+  namespace: bookinfo
   labels:
     app: test-client
 spec:
@@ -287,27 +287,27 @@ kubectl apply -f test-client.yaml
 ## Step 5: Wait for Deployment
 
 ```bash
-kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n mesh-demo
-kubectl wait --for=condition=available --timeout=300s deployment/test-client -n mesh-demo
+kubectl wait --for=condition=available --timeout=300s deployment/productpage-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/details-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/reviews-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/ratings-v1 -n bookinfo
+kubectl wait --for=condition=available --timeout=300s deployment/test-client -n bookinfo
 ```
 
 ## Step 6: Test the Service Mesh
 
 ```bash
 # Test basic connectivity to productpage
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080
 
 # Test full bookinfo flow
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080/productpage
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080/productpage
 
 # Check that sidecars are injected
-kubectl get pods -n mesh-demo
+kubectl get pods -n bookinfo
 
 # Verify Istio sidecar is running (should show 2/2 containers)
-kubectl describe pod -n mesh-demo -l app=productpage
+kubectl describe pod -n bookinfo -l app=productpage
 ```
 
 ## What You Get
@@ -324,16 +324,16 @@ With this minimal setup, you have:
 
 ```bash
 # Check pod status
-kubectl get pods -n mesh-demo
+kubectl get pods -n bookinfo
 
 # Check services
-kubectl get svc -n mesh-demo
+kubectl get svc -n bookinfo
 
 # Test connectivity
-kubectl exec -n mesh-demo deployment/test-client -- curl -s productpage:9080
+kubectl exec -n bookinfo deployment/test-client -- curl -s productpage:9080
 
 # Check sidecar injection
-kubectl get pods -n mesh-demo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
+kubectl get pods -n bookinfo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
 ```
 
 ## Next Steps
@@ -345,4 +345,4 @@ Once you have the basic service mesh working, you can add:
 - **Observability**: Gateway and external access
 - **Canary Deployments**: Multiple service versions with traffic splitting
 
-See [OPENSHIFT-SETUP.md](OPENSHIFT-SETUP.md) for OpenShift-specific setup or [ISTIO-SETUP.md](ISTIO-SETUP.md) for standard Istio installation.
+See [ISTIO-SETUP.md](ISTIO-SETUP.md) for Istio installation on k3s.

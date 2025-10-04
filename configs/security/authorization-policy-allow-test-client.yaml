@@ -1,14 +1,14 @@
-# Allow test client to access hello service
+# Allow test client to access Bookinfo services
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
   name: allow-test-client
-  namespace: mesh-demo
+  namespace: bookinfo
 spec:
   rules:
   - from:
     - source:
-        principals: ["cluster.local/ns/mesh-demo/sa/default"]
+        principals: ["cluster.local/ns/bookinfo/sa/default"]
     to:
     - operation:
         methods: ["GET", "POST"]
