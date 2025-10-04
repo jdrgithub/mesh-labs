@@ -22,13 +22,20 @@ SPIFFE (Secure Production Identity Framework For Everyone) provides a standardiz
 ### Commands
 
 ```bash
-# Show SPIFFE identities for Bookinfo services
+# Show service accounts for Bookinfo services
 kubectl get pods -n bookinfo -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.serviceAccountName}{"\n"}{end}'
+
+# Get actual SPIFFE identity from Istio proxy logs
+kubectl logs -n bookinfo deployment/productpage-v1 -c istio-proxy | grep -i spiffe
+
+# Describe pod to see SPIFFE identity in action
+istioctl x describe pod <pod-name> -n bookinfo
 ```
 
 ### Example Output
 
-```
+```bash
+# Service accounts
 details-v1-55cddc9798-2mdwz        default
 productpage-v1-5fb5d4c744-w5nxx    default
 ratings-v1-5b54db4474-9h7qr        default
@@ -36,9 +43,55 @@ reviews-v1-8678f67585-vhxhh         default
 reviews-v2-7c6d4847b8-sg5kd        default
 reviews-v3-7f866f88c4-tkhbv        default
 test-client-64d9fd78f5-7v2dg       default
+
+# SPIFFE identity in proxy logs
+2025-10-03T21:52:42.171209Z	info	sds	Starting SDS server for workload certificates, will listen on "var/run/secrets/workload-spiffe-uds/socket"
+2025-10-03T21:52:42.486282Z	info	cache	generated new workload certificate	resourceName=default latency=326.971302ms ttl=23h59m59.513724672s
+
+# JWT Token showing actual SPIFFE identity
+kubectl exec -n bookinfo productpage-v1-5fb5d4c744-w5nxx -c istio-proxy -- cat /var/run/secrets/kubernetes.io/serviceaccount/token | cut -d. -f2 | base64 -d | jq .
+{
+  "sub": "system:serviceaccount:bookinfo:default",
+  "kubernetes.io": {
+    "namespace": "bookinfo",
+    "serviceaccount": {
+      "name": "default"
+    }
+  }
+}
+
+# Actual SPIFFE identity from Istio proxy bootstrap configuration
+istioctl proxy-config bootstrap productpage-v1-5fb5d4c744-w5nxx -n bookinfo | grep -A 10 -B 5 "SERVICE_ACCOUNT"
+                    "SERVICE_ACCOUNT": "default",
+                    "WORKLOAD_IDENTITY_SOCKET_FILE": "socket",
+                    "WORKLOAD_NAME": "productpage-v1"
+                },
+            "locality": {
+
+            },
+
+# Pod description showing SPIFFE identity usage
+Pod: productpage-v1-5fb5d4c744-w5nxx
+   Pod Revision: default
+   Pod Ports: 9080 (productpage), 15090 (istio-proxy)
+RBAC policies: ns[bookinfo]-policy[allow-productpage-spiffe]-rule[1], ns[bookinfo]-policy[allow-productpage-spiffe]-rule[2]
 ```
 
-**SPIFFE Identity**: `cluster.local/ns/bookinfo/sa/default` (used by all Bookinfo services)
+**Actual SPIFFE Identity**: `cluster.local/ns/bookinfo/sa/default`
+
+**SPIFFE Identity Components Found in Istio Proxy Bootstrap**:
+- **NAMESPACE**: `bookinfo`
+- **SERVICE_ACCOUNT**: `default`
+- **WORKLOAD_NAME**: `productpage-v1`
+- **WORKLOAD_IDENTITY_SOCKET_FILE**: `socket`
+
+**Where to Observe SPIFFE Identity**:
+1. **JWT Token**: `system:serviceaccount:bookinfo:default` in the service account token
+2. **Istio Proxy Bootstrap**: `SERVICE_ACCOUNT: "default"` and `NAMESPACE: "bookinfo"` in the metadata
+3. **Istio Proxy Logs**: Shows workload certificate generation with `resourceName=default`
+4. **istioctl describe**: Shows RBAC policies using the SPIFFE identity
+5. **Authorization Policies**: References the SPIFFE identity in source rules
+6. **Workload Socket**: `/var/run/secrets/workload-spiffe-uds/socket` for certificate communication
 
 ## Deny-All Policy
 
