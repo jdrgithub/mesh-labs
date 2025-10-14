@@ -1,0 +1,550 @@
+
+Why NetworkPolicy doesn't work for mesh-to-mesh traffic
+How NetworkPolicy actually works
+NetworkPolicy is enforced by the CNI (Container Network Interface) plugin - in OpenShift, that's OVN-Kubernetes. It operates at Layer 3/4 (network/transport layer):
+
+CNI inspects IP packets on the network
+Looks at source IP, destination IP, ports, protocol
+Applies iptables/eBPF rules to allow or drop packets
+Has zero visibility into encrypted payloads
+
+What happens in Istio mesh traffic
+When curl1 (mesh pod) calls echo-svc.echo-ns.svc.cluster.local:
+Step 1: curl1's Envoy sidecar intercepts the outbound request
+Step 2: Envoy looks up the Service and gets the backend pod IPs
+Step 3: Envoy establishes an mTLS connection directly to the echo pod's Envoy sidecar
+
+Uses mutual TLS with certificates
+Connection is pod-to-pod at the IP level
+Payload is fully encrypted
+
+Step 4: The CNI sees:
+Source: curl1-pod-ip:random-port
+Dest: echo-pod-ip:15008 (or 15006)
+Protocol: TCP
+Payload: [ENCRYPTED TLS DATA]
+Step 5: NetworkPolicy evaluation:
+
+"Is this pod-to-pod traffic?" → Yes
+"Do I have a rule blocking curl1-pod-ip → echo-pod-ip?" → Yes, default deny
+"Can I inspect what's inside to see if it matches pod selector app: curl1?" → NO - it's encrypted
+"Is this established pod-to-pod communication on a known Istio port?" → Yes
+
+The CNI cannot see:
+
+Which pod labels the source has
+Which service account is making the request
+Whether this is going to a Service or direct pod
+The actual HTTP request inside
+
+Why the CNI allows it through
+In Istio, the CNI is typically configured to allow pod-to-pod mTLS traffic because:
+
+Blocking it would break the entire mesh
+Security is handled at Layer 7 by Envoy (AuthorizationPolicy)
+The mTLS certificates prove identity, not IP addresses
+
+What NetworkPolicy CAN block
+Non-mesh → mesh traffic:
+Non-mesh pod → echo pod (no sidecar on source)
+- CNI sees plaintext or non-mTLS traffic
+- NetworkPolicy rules can inspect and block
+- Result: Connection timeout/refused
+This is what you saw when testing with test-no-sidecar.
+Why AuthorizationPolicy works
+AuthorizationPolicy operates inside the Envoy sidecar at Layer 7:
+Step 1: mTLS connection arrives at echo pod's Envoy
+Step 2: Envoy decrypts the mTLS connection
+Step 3: Envoy extracts the client identity from the mTLS certificate:
+
+Service account: curl1-sa
+Namespace: curl-ns
+
+Step 4: Envoy checks AuthorizationPolicy rules:
+
+"Does this match selector app: echo?" → Yes
+"Is source principal cluster.local/ns/curl-ns/sa/curl1-sa allowed?" → Check policy
+
+Step 5: Envoy decides:
+
+Allowed → forwards to application → 200
+Denied → returns 403 directly
+
+Envoy sees everything NetworkPolicy cannot:
+
+Service account identity (from mTLS cert)
+HTTP method, path, headers
+Actual destination service
+
+Visual comparison
+NetworkPolicy (CNI layer):
+[curl1 pod] --encrypted mTLS--> [echo pod]
+     ↓
+  [CNI: "I see encrypted pod-to-pod traffic, allowing"]
+AuthorizationPolicy (Envoy layer):
+[curl1 pod] --mTLS--> [echo Envoy] --decrypt--> [AuthorizationPolicy check]
+                           ↓
+                  "SA = curl1-sa, allowed? Check policy"
+                           ↓
+                      [403 or forward to app]
+Bottom line
+NetworkPolicy can't distinguish between curl1 and curl2 when both have sidecars because:
+
+Both create encrypted mTLS connections
+Both appear as legitimate pod-to-pod traffic
+Pod labels like app: curl1 are metadata, not visible in network packets
+The CNI has no way to decrypt and inspect the mTLS certificate
+
+You must use AuthorizationPolicy because only Envoy can decrypt the mTLS connection and see the service account identity that distinguishes curl1 from curl2.
+
+
+Here’s my own take — same topic, but written as if it were a clear, self-contained technical explainer you’d include in a platform-engineering runbook or an internal wiki.
+
+---
+
+## Why Kubernetes NetworkPolicy Fails for Istio Mesh-to-Mesh Traffic
+
+### 1. What NetworkPolicy Really Does
+
+Kubernetes `NetworkPolicy` operates at **Layer 3/4** (network and transport).
+It’s enforced by the **CNI plugin**—on OpenShift, that’s **OVN-Kubernetes**.
+
+The CNI inspects packets as they traverse the node network stack:
+
+* Sees **source IP**, **destination IP**, **port**, and **protocol**
+* Applies `iptables` or eBPF rules to allow or drop traffic
+* Has **no visibility** into packet payloads or higher-layer identity (pods, SAs, HTTP data)
+
+It is purely a **packet filter**, not an application-aware firewall.
+
+---
+
+### 2. What Actually Happens Inside the Mesh
+
+When a mesh-enabled pod (`curl1`) calls another mesh service (`echo`):
+
+1. **Outbound interception** – `curl1`’s Envoy sidecar captures the request.
+2. **Destination resolution** – Envoy resolves the service FQDN to backend pod IPs.
+3. **mTLS session setup** – Envoy opens a **mutual-TLS** connection directly to `echo`’s sidecar (`15006`/`15008`).
+4. **Encrypted payload** – The entire HTTP request is now wrapped in TLS; the CNI only sees:
+
+   ```
+   Src: curl1-pod-ip:random
+   Dst: echo-pod-ip:15006
+   Proto: TCP
+   Payload: [encrypted bytes]
+   ```
+
+At that point, OVN-Kubernetes can tell *two pod IPs are talking*, but nothing about who those pods really are or what’s inside the stream.
+
+---
+
+### 3. Why the CNI Lets It Through
+
+Istio installs its own **Istio-CNI** component that programs flow rules so sidecar-to-sidecar ports remain open.
+If the base CNI were to block those, the mesh would collapse—no workload could talk.
+
+So the CNI’s view is:
+
+> “This is expected pod-to-pod TCP traffic on an Istio port. Let it pass.”
+
+It has no mechanism to evaluate mTLS certificates or decode the HTTP payload.
+Identity in mTLS lives in the **certificate**, which the CNI cannot see or decrypt.
+
+---
+
+### 4. What NetworkPolicy *Can* Still Enforce
+
+NetworkPolicy continues to work for **non-mesh traffic**:
+
+* From a pod *without* a sidecar → to a mesh service
+* From outside the cluster → to a mesh ingress gateway
+
+That traffic is either plaintext or at least visible at the IP/port level, so CNI rules can match and drop it.
+That’s why “no-mesh → mesh” tests often show the expected deny behavior.
+
+---
+
+### 5. Why AuthorizationPolicy Works
+
+`AuthorizationPolicy` executes inside Envoy—the same proxy that terminates mTLS.
+It operates at **Layer 7** (application).
+
+1. Connection arrives, mTLS is terminated by Envoy.
+2. Envoy extracts the **SPIFFE identity** from the client certificate:
+
+   ```
+   cluster.local/ns/curl-ns/sa/curl1-sa
+   ```
+3. Policy rules are evaluated against that identity and against HTTP metadata (method, path, headers).
+4. If permitted → request forwarded to the app (200).
+   If denied → Envoy returns 403 immediately.
+
+Because Envoy has decrypted traffic and knows the peer’s service account, it can make decisions the CNI never could.
+
+---
+
+### 6. Comparison Summary
+
+| Layer | Enforcer                    | What It Sees                    | Controls           | Works For       |
+| ----- | --------------------------- | ------------------------------- | ------------------ | --------------- |
+| L3/L4 | CNI / NetworkPolicy         | IPs, ports, protocol            | Packet forwarding  | Non-mesh ↔ mesh |
+| L7    | Envoy / AuthorizationPolicy | mTLS identity, HTTP method/path | Application access | Mesh ↔ mesh     |
+
+---
+
+### 7. The Bottom Line
+
+Once both pods are in the mesh, **mTLS hides all identity and intent from the CNI**.
+Every call looks like generic encrypted TCP between pod IPs.
+Labels, namespaces, and service accounts exist only in Kubernetes metadata—not in the network packet.
+
+Therefore:
+
+* `NetworkPolicy` can’t distinguish `curl1` from `curl2`.
+* Only Envoy’s `AuthorizationPolicy`—running after mTLS decryption—can decide which service accounts or namespaces are allowed.
+
+> **Use NetworkPolicy** to guard the mesh boundary.
+> **Use AuthorizationPolicy** to control traffic *within* the mesh.
+
+
+Short version: your results are exactly what we’d expect when **L3/L4 NetworkPolicy** gates the TCP path that **Envoy** needs for mesh traffic.
+
+### What’s happening under the hood
+
+1. **No NetworkPolicy → 200**
+
+   * Source pod’s Envoy opens a TCP connection to the destination pod’s Envoy (typically 15006/15008).
+   * TCP succeeds, mTLS/HTTP succeed → app returns 200.
+
+2. **Deny-all NetworkPolicy on the destination → 503**
+
+   * OVN-Kubernetes drops the upstream TCP SYNs to the destination pod IP/port.
+   * Source Envoy can’t establish an upstream connection, so it generates a **503** (upstream connection failure) to the client.
+   * Important: 503 here is *from Envoy*, not the app. You’ll see this whenever the L3/L4 path is blocked or blackholed.
+
+3. **Allow rule for `curl1` only → `curl1` 200, `curl2` 503**
+
+   * NetworkPolicy uses **podSelectors** to build **IP sets**. Even though it can’t see labels on the wire, it *pre-resolves* labels → pod IPs.
+   * If your allow policy says “from pods with `app=curl1`,” OVN permits traffic **from the IPs of those pods**.
+
+     * `curl1` IP ∈ allowed set → TCP works → mTLS/HTTP work → 200.
+     * `curl2` IP ∉ allowed set → TCP dropped → Envoy returns 503.
+
+### Key nuance (why this doesn’t contradict “NP can’t do mesh identity”)
+
+* **NetworkPolicy can gate by IP/port** (and therefore by *which pods* via podSelector→IP mapping).
+* **NetworkPolicy cannot gate by mesh identity** (service account / SPIFFE) or by HTTP method/path—only Envoy can.
+* So NP can absolutely let `curl1` through and block `curl2` if they’re different pods/labels (different IP sets). It just **can’t** decide based on “`curl1-sa` vs `curl2-sa`” or anything inside mTLS/HTTP.
+
+### Mental model
+
+* Use **NetworkPolicy** to decide *which pod IPs* may open TCP to your workloads (L3/L4 guardrail).
+* Use **AuthorizationPolicy** to decide *which service identities / HTTP calls* are allowed once TCP is established (L7 guardrail).
+
+Your 200/503 pattern maps perfectly to that split:
+
+* Open TCP path → 200 (assuming app OK).
+* Block TCP path → Envoy 503.
+* Selectively open TCP for `curl1` only → `curl1` 200, `curl2` 503.
+
+
+Excellent question — and you’re right to notice that **503s are not true “blocks”** in the security sense, even if they “work” to deny access.
+
+Let’s unpack what’s actually going on and why that’s a **leaky, fragile, and misleading security mechanism**.
+
+---
+
+### 1. A 503 is not enforcement — it’s *failure*
+
+When you get a 503 in a Service Mesh, it doesn’t mean Envoy *decided* the request was unauthorized.
+It means **Envoy failed to reach its upstream target** — the TCP session couldn’t be established or was reset.
+
+From Istio’s perspective:
+
+```
+curl -> Envoy(outbound) -> X (dropped by CNI)
+```
+
+Envoy retries, fails to open the socket, and finally reports `upstream connect error or disconnect/reset before headers`.
+That’s not a deliberate deny; it’s a **connectivity failure**.
+
+If your intention is to *enforce policy*, you want a **403 Forbidden** from the receiving sidecar, not a 503.
+
+---
+
+### 2. NetworkPolicy’s deny causes “broken mesh,” not controlled rejection
+
+When you drop traffic at the CNI (via a deny-all policy), you break the **control path** that the mesh relies on for:
+
+* mTLS handshakes
+* Service discovery (EDS updates rely on reachable endpoints)
+* Retries and circuit-breaking telemetry
+* Metrics and tracing continuity
+
+The mesh expects to handle L7 decisions internally. When the CNI drops packets:
+
+* Retries spin in the client Envoy
+* Latency spikes
+* Connection pools thrash
+* Metrics show “503 upstream failure,” not “blocked by policy”
+
+So while it *looks* like blocking, it’s really **causing connection-level chaos**.
+
+---
+
+### 3. Observability and debugging degrade
+
+A 503 tells you *something failed* but not *why*.
+You lose the clear audit trail of:
+
+* Who tried to access what
+* Which AuthorizationPolicy rule applied
+* What identity the request used
+
+Envoy-level denial (`403` from AuthorizationPolicy) is logged with the exact principal and rule hit.
+CNI-level denial (`503`) just disappears into the network stack — nothing in Kiali, no mTLS metrics, no access log.
+
+So when something goes wrong, you can’t distinguish a legitimate denial from a broken connection, misrouted traffic, or transient mesh instability.
+
+---
+
+### 4. It breaks the zero-trust layering model
+
+In a proper service mesh:
+
+* **L3/L4 controls** (NetworkPolicy) define *what can talk to the mesh at all*
+* **L7 controls** (AuthorizationPolicy) define *what identities are trusted inside*
+
+When you block inside the mesh with NetworkPolicy, you bypass the layer that actually authenticates service accounts (mTLS certs).
+That means your “deny” is tied to pod IPs and ephemeral labels — not cryptographic identity — which defeats the entire purpose of mTLS-based zero trust.
+
+---
+
+### 5. Fragility under pod churn and scaling
+
+Since NetworkPolicy enforcement uses **IP sets**, every pod recreation or scale-out changes IPs.
+The control plane continuously recomputes and updates those sets.
+If there’s lag or temporary inconsistency, a new pod could have temporary access (or lose legitimate access).
+Istio’s policies, by contrast, are identity-based and stable across restarts.
+
+---
+
+### In short
+
+| Aspect              | NetworkPolicy Deny (503)         | AuthorizationPolicy Deny (403)      |
+| ------------------- | -------------------------------- | ----------------------------------- |
+| Enforcement layer   | CNI / L3                         | Envoy / L7                          |
+| Root cause of error | Connection failure               | Intentional rejection               |
+| Visibility          | None (no logs, no mTLS identity) | Full audit (identity, policy match) |
+| Security basis      | Pod IP                           | ServiceAccount identity             |
+| Stability           | Fragile under churn              | Stable under mTLS                   |
+| UX                  | Looks like “it broke”            | Looks like “access denied”          |
+
+---
+
+### **Bottom line**
+
+A 503 may “look” like a block, but it’s **network damage**, not **policy enforcement**.
+You’re not denying the request — you’re just preventing it from being delivered.
+It works only accidentally, and at the cost of clarity, telemetry, and trustworthiness.
+
+For a secure, observable, and predictable system:
+
+* Let **NetworkPolicy** guard *ingress into the mesh* (non-mesh sources).
+* Let **AuthorizationPolicy** decide *who inside the mesh* can talk to whom.
+
+That’s a really sharp observation — and it points straight at how **NetworkPolicy enforcement and Istio’s data plane caching interact**, especially with **OVN-Kubernetes**, **Envoy connection reuse**, and **asynchronous CNI updates**.
+
+Let’s unpack why those “delayed or inconsistent 503s” happen.
+
+---
+
+## 1. **Persistent TCP connections hide new NetworkPolicies**
+
+The single biggest reason: **Envoy keeps long-lived mTLS connections** open between sidecars.
+When you apply or remove a `NetworkPolicy`, it only affects *new* TCP connections.
+
+### What happens:
+
+* When `curl1` calls `echo`, its sidecar opens an mTLS connection (TCP + TLS handshake) to the `echo` sidecar.
+* That TCP socket stays open in Envoy’s connection pool for minutes.
+* If you apply a **default deny** after the connection exists, the CNI doesn’t retroactively kill it.
+* The existing socket continues passing encrypted traffic even though the policy says “deny.”
+
+So you see 200s for a while, until the connection closes naturally (idle timeout, circuit breaker, pod reschedule, etc.).
+Then, when Envoy tries to reconnect — **that’s when the CNI blocks it**, and 503s start appearing.
+
+**→ This explains your 30-second to multi-minute delay.**
+
+---
+
+## 2. **OVN-Kubernetes applies policies asynchronously**
+
+Even once the connection issue is ruled out, OVN itself doesn’t enforce instantly.
+
+When you `oc apply -f deny.yaml`, the following must happen:
+
+1. The API server stores the NetworkPolicy.
+2. The ovnkube-master controller reconciles it into logical flows.
+3. Those flows are distributed to each node’s `ovn-controller`.
+4. iptables/eBPF rules get rewritten.
+
+That whole process can take **seconds to minutes**, especially if:
+
+* The cluster is under load.
+* OVN DB or controller is busy.
+* You have many pods or many small namespaces.
+
+During that window, pods can still communicate as before.
+So if you curl immediately after applying a deny, you may get a 200 until OVN pushes the new rules.
+
+**→ This explains the “slow to take effect” cases.**
+
+---
+
+## 3. **Istio CNI complicates flow ordering**
+
+In OpenShift Service Mesh, **Istio-CNI** inserts additional flow rules to redirect pod traffic through Envoy.
+These rules coexist with OVN’s NetworkPolicy enforcement, but not all combinations are guaranteed atomic.
+
+That means:
+
+* A new deny rule may need to propagate through *both* CNI layers.
+* Some flows (especially the `15006`/`15008` ports) might be excluded from enforcement to avoid breaking the mesh.
+
+If your deny policy used a **podSelector: {} + policyTypes: [Ingress]** (the “default deny all” pattern),
+but Istio’s redirection chains weren’t captured by OVN yet or were exempted, that traffic might still flow.
+
+**→ This explains the “didn’t take effect at all” moments.**
+
+---
+
+## 4. **Sidecar connection pooling and retry logic mask failures**
+
+Envoy doesn’t fail immediately. It retries, reuses sockets, and sometimes buffers requests.
+So even when the CNI starts dropping packets, you might see a delay before 503s propagate to your app.
+
+In logs, you’ll see repeated lines like:
+
+```
+upstream connect error or disconnect/reset before headers
+```
+
+after Envoy finally exhausts retries and gives up.
+
+That’s why behavior may *look* inconsistent — it’s deterministic in the network, but **masked by retries and connection reuse**.
+
+---
+
+## 5. **Pod churn or label timing can desync policy targets**
+
+NetworkPolicies depend on label-to-IP mapping.
+If pods restart, relabel, or re-IP while the policy controllers are mid-sync,
+OVN might temporarily have stale or missing entries.
+During that time, the “deny all” policy might not match all pods.
+
+This shows up as “it didn’t block until I reapplied it.”
+
+---
+
+## 6. **Summary**
+
+| Symptom                        | Root Cause                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| 30s–5min delay before 503      | Existing mTLS connection reused; only new TCP connects are blocked               |
+| Immediate 200s even after deny | OVN controllers not yet applied new logical flows                                |
+| Deny never takes effect        | Istio-CNI ports excluded from enforcement or policy not matched due to selectors |
+| Inconsistent blocking          | Connection pools, retries, and OVN sync lag masking enforcement timing           |
+
+---
+
+### Bottom Line
+
+`NetworkPolicy` changes **aren’t instantaneous** and **don’t kill active mesh connections**.
+They only affect *new* TCP handshakes once both CNIs (OVN + Istio-CNI) have updated flow tables.
+
+That’s why, in practice, Service Mesh engineers avoid using `NetworkPolicy` as an enforcement tool for in-mesh traffic.
+It behaves like a *race condition*, not a security guarantee.
+If you need consistent, immediate, identity-aware blocking — **`AuthorizationPolicy` is the only reliable option.**
+
+
+1. NetworkPolicy: the wrong solution to the right problem — Howard John (Istio maintainer)
+
+Explains conceptual flaws in the NetworkPolicy API and how it fails to model service-mesh identity.
+URL: https://blog.howardjohn.info/posts/netpol-api/
+
+2. Network Policy and Istio: Deep Dive — Tigera
+
+Compares enforcement layers of Calico/OVN vs. Istio, showing why NetworkPolicy can’t handle mTLS-encrypted mesh traffic.
+URL: https://www.tigera.io/blog/network-policy-and-istio-deep-dive/
+
+3. Using Network Policy with Istio — Istio Blog
+
+An early but still relevant explanation of where NetworkPolicy stops (L3/L4) and where Istio AuthZ takes over (L7).
+URL: https://istio.io/latest/blog/2017/0.1-using-network-policy/
+
+4. Istio Security Best Practices — Official Istio Docs
+
+Notes that mTLS + AuthorizationPolicy are required for full in-mesh security and visibility.
+URL: https://istio.io/latest/docs/ops/best-practices/security/
+
+5. Ambient and Kubernetes NetworkPolicy — Istio Docs (Ambient Mesh section)
+
+Shows how NetworkPolicy interacts with the Istio CNI and why certain ports (15006/15008) must be allowed for mesh operation.
+URL: https://istio.io/latest/docs/ambient/usage/networkpolicy/
+
+If you’re running OpenShift Service Mesh (Istio + OVN-Kubernetes), the same behavior applies — OVN enforces L3/L4, while Envoy handles L7.
+These articles give you authoritative background to cite in design docs or findings summaries.
+
+“What you can’t do with Kubernetes network policies (unless you use Calico)” — Tigera
+Explores capabilities that native NetworkPolicy lacks (e.g. explicit deny, logging, policy ordering) and why that matters.
+URL: https://www.tigera.io/blog/deep-dive/what-you-cant-do-with-kubernetes-network-policies-unless-you-use-calico-the-ability-to-explicitly-deny-policies/
+ 
+Tigera - Creator of Calico
+
+“A Guide to Modern Kubernetes Network Policies” — Buoyant.io
+Discusses pros/cons of L7 policies and how L4 (NetworkPolicy) is limited when combining with service mesh.
+URL: https://www.buoyant.io/blog/a-guide-to-modern-kubernetes-network-policies
+ 
+buoyant.io
+
+“Istio Network Policy and Why We Need It?” — Medium article
+A more informal write-up exploring how people think of combining Istio and NetworkPolicy and the gaps.
+
+“Kubernetes Network Policies: Are They Really Useful?” — Medium
+A general critique of NetworkPolicy, its practical limitations, and real-world caveats.
+URL: https://medium.com/%40senthilrch/kubernetes-network-polices-are-they-really-useful-c3a153c49316
+ 
+Medium
+
+“Istio and Kubernetes Network Policies” — Istio discussion forum
+Community discussion of how NetworkPolicy works with Istio, what needs to be allowed, and how it fits in the stack.
+URL: https://discuss.istio.io/t/istio-and-kubernetes-network-policies/4858
+
+
+This happens because Istio's Envoy proxy is intercepting the traffic before the Network Policy has a chance to block the connection. When your default-deny policy prevents the connection from being established, the Envoy proxy recognizes the failure and returns a 503 error, a standard HTTP response for an unavailable "upstream" service. 
+In short, you are seeing an Istio-level error (503 Service Unavailable) instead of a low-level network error (Connection Refused or Timeout) because the network communication is still being handled by the Envoy sidecar, which then reports the failure
+
+
+
+
+stio
+Istio: 503's with UC's and TCP Fun Times
+503 errors are commonly seen by Istio users, but it's a bit of a catch-all error code. This blog helps you debug them using tcpdump and istio-proxy logs
+
+Karl Stoney
+Karl Stoney
+31 May 2019 • 9 min read
+Today I'm going to look at a rather complex problem we've been debugging at AutoTrader recently (with a lot of help from the Istio folks). Whilst this issue is largely solved, the steps we took may help you debug issues in your own deployments.
+
+The Problem
+We were noticing some requests were failing on the first attempt, and then being retried automatically by Istio and subsequently succeeding. In traces (Jaeger), it looks like this - with the first request showing a 503 status code with the response_flags of UC.
+
+
+If you use Istio, or follow Istio, you'll likely have seen numerous issues around 503 errors. The general problem with the way 503's are reported at the moment is it is a bit of a catchall.
+
+Take this really simple example:
+
+
+Basically anything that goes wrong in Application 2's envoys communication with the application will be wrapped up as a 503 and sent back to the upstream, and then the upstream will retry.
