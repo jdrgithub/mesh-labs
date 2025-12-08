@@ -1,511 +1,527 @@
-DATA BATCH GLUE
+
 
 ETL/ELT process support
+AWS GLUE
 https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
 https://docs.aws.amazon.com/glue/latest/dg/author-job-glue.html
 https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
 
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/overview
+https://cloud.google.com/products/dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
+
+Microsoft Data Factory
+https://learn.microsoft.com/en-us/azure/data-factory/introduction
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipelines-activities
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
+
+
 Standard Connectors & Adapters
+AWS GLUE
 https://docs.aws.amazon.com/glue/latest/dg/available-connections.html
 https://docs.aws.amazon.com/glue/latest/dg/crawler-data-stores.html
 https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-connect-jdbc-home.html
 
-API Support
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api.html
-https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
-https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
-
-Data Standard Support (formats, serialization, interchange)
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-parquet-home.html
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-avro-home.html
-
-Metadata Management
-https://docs.aws.amazon.com/glue/latest/dg/components-overview.html
-https://docs.aws.amazon.com/glue/latest/dg/crawler-data-stores.html
-https://docs.aws.amazon.com/glue/latest/dg/security-iam.html
-
-Data Exchange Protocols
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-connect-redshift-home.html
-https://docs.aws.amazon.com/glue/latest/dg/available-connections.html
-https://docs.aws.amazon.com/glue/latest/dg/monitor-glue.html
-
-Data Profiling
-https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
-https://docs.aws.amazon.com/glue/latest/dg/data-quality-getting-started.html
-https://aws.amazon.com/blogs/big-data/visualize-data-quality-scores-and-metrics-generated-by-aws-glue-data-quality/
-
-Data Cleansing
-https://docs.aws.amazon.com/glue/latest/dg/author-job-glue.html
-https://docs.aws.amazon.com/databrew/latest/dg/what-is-databrew.html
-https://aws.amazon.com/glue/features/data-quality/
-
-Data Validations
-https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
-https://docs.aws.amazon.com/glue/latest/dg/data-quality-getting-started.html
-https://aws.amazon.com/awstv/watch/6d59f292d5a/
-
-Data Quality Metrics
-https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
-https://aws.amazon.com/blogs/big-data/visualize-data-quality-scores-and-metrics-generated-by-aws-glue-data-quality/
-https://docs.aws.amazon.com/glue/latest/dg/monitoring-awsglue-with-cloudwatch-metrics.html
-
-Scalability
-https://docs.aws.amazon.com/glue/latest/dg/worker-types.html
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-jobs-job.html
-https://docs.aws.amazon.com/glue/latest/dg/monitor-debug-capacity.html
-
-Performance Optimization
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
-https://aws.amazon.com/blogs/big-data/scale-your-aws-glue-for-apache-spark-jobs-with-r-type-g-12x-and-g-16x-workers/
-https://medium.com/%40amuni/aws-glue-job-cost-optimization-right-sizing-matters-78a13b53a477
-
-Encryption
-https://docs.aws.amazon.com/glue/latest/dg/encryption-at-rest.html
-https://docs.aws.amazon.com/glue/latest/dg/encryption-in-transit.html
-https://docs.aws.amazon.com/glue/latest/dg/set-up-encryption.html
-
-RBAC (Role-Based Access Control)
-https://docs.aws.amazon.com/glue/latest/dg/security-iam.html
-https://docs.aws.amazon.com/glue/latest/dg/glue-policy-examples.html
-https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
-
-ABAC (Attribute-Based Access Control)
-https://docs.aws.amazon.com/glue/latest/dg/monitor-tags.html
-https://docs.aws.amazon.com/lake-formation/latest/dg/attribute-based-access-control.html
-https://docs.aws.amazon.com/organizations/latest/userguide/orgs_tagging_abac.html
-
-NIST Compliance
-https://docs.aws.amazon.com/glue/latest/dg/compliance.html
-https://aws.amazon.com/compliance/
-https://aws.amazon.com/compliance/hipaa-compliance/
-
-FISMA / FedRAMP Compliance
-https://aws.amazon.com/blogs/industries/fsi-services-spotlight-featuring-aws-glue/
-https://aws.amazon.com/compliance/fedramp/
-https://aws.amazon.com/compliance/services-in-scope/
-
-Specialized Workflow Support
-https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
-https://aws.amazon.com/blogs/big-data/orchestrate-an-etl-pipeline-using-aws-glue-workflows-triggers-and-crawlers-with-custom-classifiers/
-https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
-
-Automation
-https://docs.aws.amazon.com/glue/latest/dg/about-triggers.html
-https://docs.aws.amazon.com/glue/latest/dg/monitor-glue.html
-https://medium.com/machine-learning-reply-dach/orchestrate-etl-pipeline-using-aws-glue-workflows-2beac31dfb46
-
-Monitoring & Alerting
-https://docs.aws.amazon.com/glue/latest/dg/monitoring-awsglue-with-cloudwatch-metrics.html
-https://docs.aws.amazon.com/glue/latest/dg/monitor-profile-glue-job-cloudwatch-alarms.html
-https://www.teracloud.io/single-post/create-custom-metrics-for-aws-glue-jobs
-
-Intuitive Interface
-https://docs.aws.amazon.com/glue/latest/dg/author-job-glue.html
-https://aws.amazon.com/about-aws/whats-new/2023/10/aws-glue-example-jobs-drag-drop-preview-layout/
-https://data.folio3.com/blog/aws-glue-studio-guide/
-
-Customization Options
-https://aws.amazon.com/glue/features/
-https://docs.aws.amazon.com/glue/latest/dg/dev-endpoints.html
-https://www.presidio.com/technical-blog/building-reusable-etl-pipelines-in-aws-glue-with-custom-visual-transforms/
-
-Documentation & Support
-https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
-https://aws.amazon.com/blogs/big-data/tag/aws-glue/
-https://aws.amazon.com/blogs/industries/fsi-services-spotlight-featuring-aws-glue/
-
-Deployable to Multiple CSPs
-https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
-https://aws.amazon.com/glue/
-https://aws.amazon.com/compliance/services-in-scope/
-
-Deployment Automatable
-https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
-https://repost.aws/questions/QU3xB522RjT36Wk2zlfSDY4A/version-control-for-glue-workflow-orchestration-jobs-and-triggers
-https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
-
-Support for Different Configuration Languages
-https://cloudzero.com/blog/aws-glue/
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-jobs-job.html
-https://klamp.ai/blog/aws-glue-iam-actions-for-effective-data-integration-and-management
-
-Available as a Managed Service
-https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
-https://aws.amazon.com/glue/features/data-quality/
-https://www.netcomlearning.com/blog/aws-glue
-
-Containerization
-https://docs.aws.amazon.com/glue/latest/dg/disaster-recovery-resiliency.html
-https://docs.aws.amazon.com/glue/latest/dg/dev-endpoints.html
-https://aws.amazon.com/blogs/big-data/zero-etl-how-aws-is-tackling-data-integration-challenges/
-
-High Availability (HA)
-https://docs.aws.amazon.com/glue/latest/dg/disaster-recovery-resiliency.html
-https://docs.aws.amazon.com/databrew/latest/dg/disaster-recovery-resiliency.html
-https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/
-
-Distributed Support
-https://docs.aws.amazon.com/glue/latest/dg/worker-types.html
-https://aws.amazon.com/blogs/big-data/scale-your-aws-glue-for-apache-spark-jobs-with-r-type-g-12x-and-g-16x-workers/
-https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
-
-Zero-Down time maintenance
-https://docs.aws.amazon.com/glue/latest/dg/security.html
-https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
-https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
-
------------------------------------------------
-
-DATA BATCH - GOOGLE CLOUD DATA FLOW 
-
-ETL/ELT
-https://docs.cloud.google.com/dataflow/docs/overview
-https://cloud.google.com/products/dataflow
-https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
-
-Standard Connectors & Adapters
+Google Cloud Dataflow
 https://docs.cloud.google.com/dataflow/docs/guides/io-connector-best-practices
 https://beam.apache.org/documentation/io/connectors/
 https://docs.cloud.google.com/dataflow/docs/guides/templates/provided-io
 
+Microsoft Data Factory
+https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
+https://learn.microsoft.com/en-us/connectors/azuredatafactory/
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
+
+
 API Support
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api.html
+https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
+https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
+
+Google Cloud Dataflow
 https://docs.cloud.google.com/dataflow/docs/apis
 https://docs.cloud.google.com/dataflow/docs/reference/rest
 https://cloud.google.com/dataflow/docs/reference/rest/v1b3/projects.locations.templates
 
-Data Standard Support (formats, serialization, interchange)
-https://beam.apache.org/documentation/io/io-standards/
-https://beam.apache.org/documentation/programming-guide/
-https://docs.cloud.google.com/dataflow/docs/tutorials/ecommerce-java
-
-Metadata Management
-https://www.skills.google/course_templates/709
-https://medium.com/@poojakhaire000/google-cloud-dataplex-data-catalog-45e37964dbd0
-https://cloud.google.com/blog/products/data-analytics/generate-metadata-automatically-in-google-data-cloud
-
-Data Exchange Protocols
-https://docs.cloud.google.com/dataflow/docs/guides/io-connector-best-practices
-https://beam.apache.org/documentation/io/connectors/
-https://github.com/GoogleCloudPlatform/processing-logs-using-dataflow
-
-Data Profiling
-https://docs.cloud.google.com/dataplex/docs/data-profiling-overview
-https://cloud.google.com/blog/products/data-analytics/dataplex-data-profiling-and-automatic-data-quality-are-ga
-https://www.skills.google/focuses/67211
-
-Data Cleansing
-https://medium.com/@manik.ruet08/data-validation-and-quality-checks-in-streaming-pipelines-with-dataflow-bigquery-f5657ac379e2
-https://beam.apache.org/documentation/ml/data-processing/
-https://docs.cloud.google.com/dataflow/docs/tutorials/ecommerce-java
-
-Data Validations
-https://cloud.google.com/blog/products/data-analytics/announcing-dataflow-pipeline-validation
-https://beam.apache.org/documentation/programming-guide/
-https://github.com/GoogleCloudPlatform/spanner-data-validator
-
-Data Quality Metrics
-https://docs.cloud.google.com/dataplex/docs/data-quality-tasks-overview
-https://cloud.google.com/blog/products/data-analytics/dataplex-data-profiling-and-automatic-data-quality-are-ga
-https://medium.com/@rajkovic_marina/data-governance-on-google-cloud-platform-3e7f15dfbb71
-
-Scalability
-https://docs.cloud.google.com/dataflow/docs/overview
-https://cloud.google.com/products/dataflow
-https://docs.cloud.google.com/dataflow/quotas
-
-Performance Optimization
-https://docs.cloud.google.com/dataflow/docs/guides/pipeline-best-practices
-https://docs.cloud.google.com/dataflow/docs/guides/flexrs
-https://blog.allegro.tech/2024/06/cost-optimization-data-pipeline-gcp.html
-
-Encryption
-https://docs.cloud.google.com/dataflow/docs/guides/customer-managed-encryption-keys
-https://cloud.google.com/security/encryption/default-encryption
-https://cloud.google.com/security/encryption-at-rest/default-encryption
-
-RBAC (Role-Based Access Control)
-https://docs.cloud.google.com/dataflow/docs/security/permissions-and-authentication
-https://docs.cloud.google.com/dataflow/docs/concepts/security-and-permissions
-https://cloud.google.com/iam/docs/understanding-roles
-
-ABAC (Attribute-Based Access Control)
-https://cloud.google.com/iam/docs/conditions-overview
-https://cloud.google.com/iam/docs/conditions-overview#attributes
-https://cloud.google.com/blog/products/identity-security/better-control-cloud-resources-with-iam-conditions
-
-NIST Compliance
-https://cloud.google.com/security/compliance/nist
-https://cloud.google.com/blog/products/identity-security/google-cloud-achieves-nist-800-53-high
-https://cloud.google.com/security/compliance
-
-FISMA / FedRAMP Compliance
-https://cloud.google.com/security/compliance/fedramp
-https://cloud.google.com/blog/products/identity-security/google-cloud-achieves-fedramp-high-equivalency
-https://cloud.google.com/security/compliance/offerings#us-government
-
-Specialized Workflow Support
-https://docs.cloud.google.com/dataflow/docs/guides/pipeline-workflows
-https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
-https://cloud.google.com/blog/products/data-analytics/manage-your-dataflow-jobs-at-scale-with-dataflow-pipelines
-
-Automation
-https://docs.cloud.google.com/dataflow/docs/guides/pipeline-workflows
-https://docs.cloud.google.com/composer/docs/composer-3/launch-dataflow-pipelines
-https://cloud.google.com/blog/products/data-analytics/manage-your-dataflow-jobs-at-scale-with-dataflow-pipelines
-
-Monitoring & Alerting
-https://docs.cloud.google.com/dataflow/docs/guides/using-cloud-monitoring
-https://docs.cloud.google.com/dataflow/docs/audit-logging
-https://www.dynatrace.com/hub/detail/google-cloud-dataflow/
-
-Intuitive Interface
-https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
-https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines#console
-https://www.skills.google/paths/16/course_templates/229
-
-Customization Options
-https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
-https://docs.cloud.google.com/dataflow/docs/runner-v2
-https://beam.apache.org/documentation/programming-guide/
-
-Documentation & Support
-https://docs.cloud.google.com/dataflow/docs/overview
-https://cloud.google.com/products/dataflow
-https://www.skills.google/paths/16/course_templates/229
-
-Deployable to Multiple CSPs
-https://beam.apache.org/get-started/beam-overview/
-https://beam.apache.org/documentation/runners/capability-matrix/
-https://beam.apache.org/documentation/runners/dataflow/
-
-Deployment Automatable
-https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
-https://docs.cloud.google.com/dataflow/docs/pipeline-lifecycle
-https://cloud.google.com/blog/products/data-analytics/tips-and-tricks-to-get-your-cloud-dataflow-pipelines-into-production
-
-Support for Different Configuration Languages
-https://docs.cloud.google.com/dataflow/docs/concepts/beam-programming-model
-https://beam.apache.org/get-started/beam-overview/
-https://beam.apache.org/documentation/sdks/python/
-
-Available as a Managed Service
-https://cloud.google.com/products/dataflow
-https://docs.cloud.google.com/dataflow/docs/overview
-https://integrate.io/blog/best-etl-tools-for-big-data-multi-cloud-scalability/
-
-Containerization
-https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
-https://docs.cloud.google.com/dataflow/docs/guides/templates/creating-flex-templates
-https://docs.cloud.google.com/dataflow/docs/guides/using-container-images
-
-High Availability (HA)
-https://cloud.google.com/dataflow/sla
-https://docs.cloud.google.com/dataflow/docs/guides/pipeline-best-practices
-https://cloud.google.com/blog/products/data-analytics/designing-your-cloud-dataflow-disaster-recovery-strategy
-
-Distributed Support
-https://docs.cloud.google.com/dataflow/docs/overview
-https://docs.cloud.google.com/dataflow/docs/resources/locations
-https://beam.apache.org/get-started/beam-overview/
-
-Zero-Down time maintenance
-https://docs.cloud.google.com/dataflow/docs/guides/updating-a-pipeline
-https://cloud.google.com/blog/products/gcp/managing-streaming-pipelines-in-google-cloud-dataflow-just-got-better
-https://docs.cloud.google.com/dataflow/docs/guides/pipeline-lifecycle
-
----------------------------------------------------------------------------
-
-BATCH - MICROSOFT DATA FACTORY
-
-
-
 Microsoft Data Factory
-ETL/ELT process support
-https://learn.microsoft.com/en-us/azure/data-factory/introduction
-https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipelines-activities
-https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
-
-Microsoft Data Factory
-Standard Connectors & Adapters
-https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
-https://learn.microsoft.com/en-us/connectors/azuredatafactory/
-https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
-
-Microsoft Data Factory
-API Support
 https://learn.microsoft.com/en-us/rest/api/datafactory/
 https://learn.microsoft.com/en-us/rest/api/datafactory/pipelines
 https://learn.microsoft.com/en-us/azure/data-factory/quickstart-create-data-factory-rest-api
 
-Microsoft Data Factory
+
 Data Standard Support (formats, serialization, interchange)
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-parquet-home.html
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-avro-home.html
+
+Google Cloud Dataflow
+https://beam.apache.org/documentation/io/io-standards/
+https://beam.apache.org/documentation/programming-guide/
+https://docs.cloud.google.com/dataflow/docs/tutorials/ecommerce-java
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
 https://learn.microsoft.com/en-us/azure/data-factory/copy-activity-overview
 https://learn.microsoft.com/en-us/azure/data-factory/connector-rest
 
-Microsoft Data Factory
+
 Metadata Management
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/components-overview.html
+https://docs.aws.amazon.com/glue/latest/dg/crawler-data-stores.html
+https://docs.aws.amazon.com/glue/latest/dg/security-iam.html
+
+Google Cloud Dataflow
+https://www.skills.google/course_templates/709
+https://medium.com/@poojakhaire000/google-cloud-dataplex-data-catalog-45e37964dbd0
+https://cloud.google.com/blog/products/data-analytics/generate-metadata-automatically-in-google-data-cloud
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/connect-data-factory-to-azure-purview
 https://learn.microsoft.com/en-us/purview/data-map-lineage-azure-data-factory
 https://learn.microsoft.com/en-us/azure/data-factory/how-to-discover-explore-purview-data
 
-Microsoft Data Factory
+
 Data Exchange Protocols
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-connect-redshift-home.html
+https://docs.aws.amazon.com/glue/latest/dg/available-connections.html
+https://docs.aws.amazon.com/glue/latest/dg/monitor-glue.html
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/io-connector-best-practices
+https://beam.apache.org/documentation/io/connectors/
+https://github.com/GoogleCloudPlatform/processing-logs-using-dataflow
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
 https://learn.microsoft.com/en-us/azure/data-factory/connector-rest
 https://learn.microsoft.com/en-us/azure/data-factory/data-movement-security-considerations
 
-Microsoft Data Factory
+
 Data Profiling
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
+https://docs.aws.amazon.com/glue/latest/dg/data-quality-getting-started.html
+https://aws.amazon.com/blogs/big-data/visualize-data-quality-scores-and-metrics-generated-by-aws-glue-data-quality/
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataplex/docs/data-profiling-overview
+https://cloud.google.com/blog/products/data-analytics/dataplex-data-profiling-and-automatic-data-quality-are-ga
+https://www.skills.google/focuses/67211
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-debug-mode
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
 https://learn.microsoft.com/en-us/azure/data-factory/wrangling-overview
 
-Microsoft Data Factory
+
 Data Cleansing
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/author-job-glue.html
+https://docs.aws.amazon.com/databrew/latest/dg/what-is-databrew.html
+https://aws.amazon.com/glue/features/data-quality/
+
+Google Cloud Dataflow
+https://medium.com/@manik.ruet08/data-validation-and-quality-checks-in-streaming-pipelines-with-dataflow-bigquery-f5657ac379e2
+https://beam.apache.org/documentation/ml/data-processing/
+https://docs.cloud.google.com/dataflow/docs/tutorials/ecommerce-java
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/data-flow-transformation-overview
 https://learn.microsoft.com/en-us/azure/data-factory/wrangling-overview
 https://learn.microsoft.com/en-us/azure/data-factory/wrangling-tutorial
 
-Microsoft Data Factory
+
 Data Validations
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
+https://docs.aws.amazon.com/glue/latest/dg/data-quality-getting-started.html
+https://aws.amazon.com/awstv/watch/6d59f292d5a/
+
+Google Cloud Dataflow
+https://cloud.google.com/blog/products/data-analytics/announcing-dataflow-pipeline-validation
+https://beam.apache.org/documentation/programming-guide/
+https://github.com/GoogleCloudPlatform/spanner-data-validator
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/data-flow-transformation-overview
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-debug-mode
 
-Microsoft Data Factory
+
 Data Quality Metrics
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
+https://aws.amazon.com/blogs/big-data/visualize-data-quality-scores-and-metrics-generated-by-aws-glue-data-quality/
+https://docs.aws.amazon.com/glue/latest/dg/monitoring-awsglue-with-cloudwatch-metrics.html
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataplex/docs/data-quality-tasks-overview
+https://cloud.google.com/blog/products/data-analytics/dataplex-data-profiling-and-automatic-data-quality-are-ga
+https://medium.com/@rajkovic_marina/data-governance-on-google-cloud-platform-3e7f15dfbb71
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory-reference
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-visually
 
-Microsoft Data Factory
+
 Scalability
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/worker-types.html
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-jobs-job.html
+https://docs.aws.amazon.com/glue/latest/dg/monitor-debug-capacity.html
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/overview
+https://cloud.google.com/products/dataflow
+https://docs.cloud.google.com/dataflow/quotas
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
 https://learn.microsoft.com/en-us/azure/data-factory/create-self-hosted-integration-runtime
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-performance
 
-Microsoft Data Factory
+
 Performance Optimization
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
+https://aws.amazon.com/blogs/big-data/scale-your-aws-glue-for-apache-spark-jobs-with-r-type-g-12x-and-g-16x-workers/
+https://medium.com/%40amuni/aws-glue-job-cost-optimization-right-sizing-matters-78a13b53a477
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-best-practices
+https://docs.cloud.google.com/dataflow/docs/guides/flexrs
+https://blog.allegro.tech/2024/06/cost-optimization-data-pipeline-gcp.html
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-performance
 https://learn.microsoft.com/en-us/azure/data-factory/copy-activity-overview
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory
 
-Microsoft Data Factory
+
 Encryption
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/encryption-at-rest.html
+https://docs.aws.amazon.com/glue/latest/dg/encryption-in-transit.html
+https://docs.aws.amazon.com/glue/latest/dg/set-up-encryption.html
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/customer-managed-encryption-keys
+https://cloud.google.com/security/encryption/default-encryption
+https://cloud.google.com/security/encryption-at-rest/default-encryption
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/secure-your-azure-data-factory
 https://learn.microsoft.com/en-us/azure/data-factory/data-movement-security-considerations
 https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/data-factory-security-baseline
 
-Microsoft Data Factory
+
 RBAC (Role-Based Access Control)
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/security-iam.html
+https://docs.aws.amazon.com/glue/latest/dg/glue-policy-examples.html
+https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/security/permissions-and-authentication
+https://docs.cloud.google.com/dataflow/docs/concepts/security-and-permissions
+https://cloud.google.com/iam/docs/understanding-roles
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/data-factory-security-baseline
 https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
 https://learn.microsoft.com/en-us/azure/data-factory/secure-your-azure-data-factory
 
-Microsoft Data Factory
+
 ABAC (Attribute-Based Access Control)
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/monitor-tags.html
+https://docs.aws.amazon.com/lake-formation/latest/dg/attribute-based-access-control.html
+https://docs.aws.amazon.com/organizations/latest/userguide/orgs_tagging_abac.html
+
+Google Cloud Dataflow
+https://cloud.google.com/iam/docs/conditions-overview
+https://cloud.google.com/iam/docs/conditions-overview#attributes
+https://cloud.google.com/blog/products/identity-security/better-control-cloud-resources-with-iam-conditions
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/data-factory-security-baseline
 https://learn.microsoft.com/en-us/azure/data-factory/secure-your-azure-data-factory
 https://learn.microsoft.com/en-us/azure/governance/policy/samples/gov-fedramp-high
 
-Microsoft Data Factory
+
 NIST Compliance
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/compliance.html
+https://aws.amazon.com/compliance/
+https://aws.amazon.com/compliance/hipaa-compliance/
+
+Google Cloud Dataflow
+https://cloud.google.com/security/compliance/nist
+https://cloud.google.com/blog/products/identity-security/google-cloud-achieves-nist-800-53-high
+https://cloud.google.com/security/compliance
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/data-factory-security-baseline
 https://learn.microsoft.com/en-us/azure/governance/policy/samples/gov-fedramp-high
 https://learn.microsoft.com/en-us/azure/azure-government/compliance/azure-services-in-fedramp-auditscope
 
-Microsoft Data Factory
+
 FISMA / FedRAMP Compliance
+AWS GLUE
+https://aws.amazon.com/blogs/industries/fsi-services-spotlight-featuring-aws-glue/
+https://aws.amazon.com/compliance/fedramp/
+https://aws.amazon.com/compliance/services-in-scope/
+
+Google Cloud Dataflow
+https://cloud.google.com/security/compliance/fedramp
+https://cloud.google.com/blog/products/identity-security/google-cloud-achieves-fedramp-high-equivalency
+https://cloud.google.com/security/compliance/offerings#us-government
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/compliance/offerings/offering-fedramp
 https://learn.microsoft.com/en-us/azure/azure-government/compliance/azure-services-in-fedramp-auditscope
 https://learn.microsoft.com/en-us/azure/governance/policy/samples/gov-fedramp-high
 
-Microsoft Data Factory
+
 Specialized Workflow Support
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
+https://aws.amazon.com/blogs/big-data/orchestrate-an-etl-pipeline-using-aws-glue-workflows-triggers-and-crawlers-with-custom-classifiers/
+https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-workflows
+https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
+https://cloud.google.com/blog/products/data-analytics/manage-your-dataflow-jobs-at-scale-with-dataflow-pipelines
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipelines-activities
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipeline-execution-triggers
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
 
-Microsoft Data Factory
+
 Automation
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/about-triggers.html
+https://docs.aws.amazon.com/glue/latest/dg/monitor-glue.html
+https://medium.com/machine-learning-reply-dach/orchestrate-etl-pipeline-using-aws-glue-workflows-2beac31dfb46
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-workflows
+https://docs.cloud.google.com/composer/docs/composer-3/launch-dataflow-pipelines
+https://cloud.google.com/blog/products/data-analytics/manage-your-dataflow-jobs-at-scale-with-dataflow-pipelines
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-automate-azure-pipelines
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipeline-execution-triggers
 
-Microsoft Data Factory
+
 Monitoring & Alerting
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/monitoring-awsglue-with-cloudwatch-metrics.html
+https://docs.aws.amazon.com/glue/latest/dg/monitor-profile-glue-job-cloudwatch-alarms.html
+https://www.teracloud.io/single-post/create-custom-metrics-for-aws-glue-jobs
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/using-cloud-monitoring
+https://docs.cloud.google.com/dataflow/docs/audit-logging
+https://www.dynatrace.com/hub/detail/google-cloud-dataflow/
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-visually
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory-reference
 
-Microsoft Data Factory
+
 Intuitive Interface
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/author-job-glue.html
+https://aws.amazon.com/about-aws/whats-new/2023/10/aws-glue-example-jobs-drag-drop-preview-layout/
+https://data.folio3.com/blog/aws-glue-studio-guide/
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
+https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines#console
+https://www.skills.google/paths/16/course_templates/229
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/
 https://learn.microsoft.com/en-us/azure/data-factory/how-to-manage-studio-preview-exp
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-visually
 
-Microsoft Data Factory
+
 Customization Options
+AWS GLUE
+https://aws.amazon.com/glue/features/
+https://docs.aws.amazon.com/glue/latest/dg/dev-endpoints.html
+https://www.presidio.com/technical-blog/building-reusable-etl-pipelines-in-aws-glue-with-custom-visual-transforms/
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
+https://docs.cloud.google.com/dataflow/docs/runner-v2
+https://beam.apache.org/documentation/programming-guide/
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/data-flow-script
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
 https://learn.microsoft.com/en-us/rest/api/datafactory/v2
 
-Microsoft Data Factory
+
 Documentation & Support
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+https://aws.amazon.com/blogs/big-data/tag/aws-glue/
+https://aws.amazon.com/blogs/industries/fsi-services-spotlight-featuring-aws-glue/
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/overview
+https://cloud.google.com/products/dataflow
+https://www.skills.google/paths/16/course_templates/229
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/
 https://learn.microsoft.com/en-us/azure/data-factory/introduction
 https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory
 
-Microsoft Data Factory
+
 Deployable to Multiple CSPs
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+https://aws.amazon.com/glue/
+https://aws.amazon.com/compliance/services-in-scope/
+
+Google Cloud Dataflow
+https://beam.apache.org/get-started/beam-overview/
+https://beam.apache.org/documentation/runners/capability-matrix/
+https://beam.apache.org/documentation/runners/dataflow/
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
 https://learn.microsoft.com/en-us/connectors/azuredatafactory/
 
-Microsoft Data Factory
+
 Deployment Automatable
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
+https://repost.aws/questions/QU3xB522RjT36Wk2zlfSDY4A/version-control-for-glue-workflow-orchestration-jobs-and-triggers
+https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
+https://docs.cloud.google.com/dataflow/docs/pipeline-lifecycle
+https://cloud.google.com/blog/products/data-analytics/tips-and-tricks-to-get-your-cloud-dataflow-pipelines-into-production
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-automate-azure-pipelines
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-sample-script
 
-Microsoft Data Factory
+
 Support for Different Configuration Languages
+AWS GLUE
+https://cloudzero.com/blog/aws-glue/
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-jobs-job.html
+https://klamp.ai/blog/aws-glue-iam-actions-for-effective-data-integration-and-management
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/concepts/beam-programming-model
+https://beam.apache.org/get-started/beam-overview/
+https://beam.apache.org/documentation/sdks/python/
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/rest/api/datafactory/
 https://learn.microsoft.com/en-us/rest/api/datafactory/v2
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
 
-Microsoft Data Factory
+
 Available as a Managed Service
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+https://aws.amazon.com/glue/features/data-quality/
+https://www.netcomlearning.com/blog/aws-glue
+
+Google Cloud Dataflow
+https://cloud.google.com/products/dataflow
+https://docs.cloud.google.com/dataflow/docs/overview
+https://integrate.io/blog/best-etl-tools-for-big-data-multi-cloud-scalability/
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/introduction
 https://learn.microsoft.com/en-us/azure/data-factory/
 https://learn.microsoft.com/en-us/azure/data-factory/secure-your-azure-data-factory
 
-Microsoft Data Factory
+
 Containerization
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/disaster-recovery-resiliency.html
+https://docs.aws.amazon.com/glue/latest/dg/dev-endpoints.html
+https://aws.amazon.com/blogs/big-data/zero-etl-how-aws-is-tackling-data-integration-challenges/
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
+https://docs.cloud.google.com/dataflow/docs/guides/templates/creating-flex-templates
+https://docs.cloud.google.com/dataflow/docs/guides/using-container-images
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
 https://learn.microsoft.com/en-us/azure/data-factory/create-self-hosted-integration-runtime
 https://davidalzamendi.com/self-hosted-integration-runtime-cluster/
 
-Microsoft Data Factory
+
 High Availability (HA)
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/disaster-recovery-resiliency.html
+https://docs.aws.amazon.com/databrew/latest/dg/disaster-recovery-resiliency.html
+https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/
+
+Google Cloud Dataflow
+https://cloud.google.com/dataflow/sla
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-best-practices
+https://cloud.google.com/blog/products/data-analytics/designing-your-cloud-dataflow-disaster-recovery-strategy
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
 https://learn.microsoft.com/en-us/azure/data-factory/create-self-hosted-integration-runtime
 https://www.pythian.com/blog/technical-track/azure-data-factory-self-hosted-ir-scaling-best-practices-and-disaster-recovery-solutions
 
-Microsoft Data Factory
+
 Distributed Support
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/worker-types.html
+https://aws.amazon.com/blogs/big-data/scale-your-aws-glue-for-apache-spark-jobs-with-r-type-g-12x-and-g-16x-workers/
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/overview
+https://docs.cloud.google.com/dataflow/docs/resources/locations
+https://beam.apache.org/get-started/beam-overview/
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
 https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-performance
 
-Microsoft Data Factory
+
 Zero-Down time maintenance
+AWS GLUE
+https://docs.aws.amazon.com/glue/latest/dg/security.html
+https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
+https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
+
+Google Cloud Dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/updating-a-pipeline
+https://cloud.google.com/blog/products/gcp/managing-streaming-pipelines-in-google-cloud-dataflow-just-got-better
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-lifecycle
+
+Microsoft Data Factory
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-automate-azure-pipelines
 https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-sample-script
-
-
-
-
