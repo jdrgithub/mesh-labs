@@ -1,86 +1,511 @@
-A1. ETL/ELT process support
-Kafka, Kafka Connect, and Kafka Streams together provide a durable, partitioned log plus transformation libraries that support continuous streaming ETL/ELT at scale. Connect handles ingestion and egress, while Streams and similar libraries perform in-stream joins, aggregations, and enrichments, but orchestration, visual design, and governance must come from external schedulers and tooling.
+DATA BATCH GLUE
 
-A2. Standard Connectors & Adapters
-Kafka Connect offers a broad ecosystem of source and sink connectors for common databases, filesystems, object stores, and SaaS platforms, configured declaratively and scaled independently of application code. However, only a small subset is maintained directly in the Apache project, and many popular connectors are third-party with varying quality, support models, and lifecycle maturity.
+ETL/ELT process support
+https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+https://docs.aws.amazon.com/glue/latest/dg/author-job-glue.html
+https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
 
-A3. API Support
-Kafka exposes mature producer, consumer, admin, and Streams APIs with well-defined semantics for ordering, durability, and exactly-once processing. Official Java clients and widely adopted clients in languages like Python, Go, .NET, and Node.js make it straightforward to integrate into heterogeneous stacks, although correct use of idempotence, transactions, and partitioning requires non-trivial expertise.
+Standard Connectors & Adapters
+https://docs.aws.amazon.com/glue/latest/dg/available-connections.html
+https://docs.aws.amazon.com/glue/latest/dg/crawler-data-stores.html
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-connect-jdbc-home.html
 
-A4. Data Standard Support
-Kafka is format-agnostic and efficiently transports Avro, JSON, Protobuf, and arbitrary binary payloads, and the broader ecosystem commonly pairs it with schema registries to manage schema evolution. Connectors and sinks can write to downstream systems in different formats (e.g., Avro or Parquet), but Kafka itself does not enforce schemas or provide native governance over formats.
+API Support
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api.html
+https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
+https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
 
-A5. Metadata Management
-Kafka brokers maintain technical metadata such as topics, partitions, consumer groups, and configuration, which can be queried through the Admin API and used for operational insight. Beyond that, dataset-level metadata, business glossaries, and lineage tracking must be implemented with external catalogs and tools, as the platform has no built-in concept of owners, classifications, or end-to-end lineage.
+Data Standard Support (formats, serialization, interchange)
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-parquet-home.html
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-avro-home.html
 
-A6. Data Exchange Protocols
-Kafka uses a custom TCP-based protocol optimized for high-throughput streaming, batching, and back-pressure, and exposes rich operational metrics via JMX. It does not natively support protocols like AMQP or MQTT, and HTTP/REST access requires the use of proxies or gateways, so standards-based protocol interoperability depends on additional components.
+Metadata Management
+https://docs.aws.amazon.com/glue/latest/dg/components-overview.html
+https://docs.aws.amazon.com/glue/latest/dg/crawler-data-stores.html
+https://docs.aws.amazon.com/glue/latest/dg/security-iam.html
 
-B1. Data Profiling
-Kafka treats message payloads as opaque bytes and does not provide any native UI or engine for computing distributions, null counts, or other profiling statistics. Any meaningful profiling must be implemented in external processors, warehouses, or profiling tools that consume from Kafka topics, using only coarse operational metrics like volume or message size as indirect signals.
+Data Exchange Protocols
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-connect-redshift-home.html
+https://docs.aws.amazon.com/glue/latest/dg/available-connections.html
+https://docs.aws.amazon.com/glue/latest/dg/monitor-glue.html
 
-B2. Data Cleansing
-Cleansing logic such as normalization, masking, or record-level filtering is implemented in producers, Kafka Streams applications, or connectors rather than in the broker. Kafka itself has no notion of validation rules or transformation functions and relies on patterns like dead-letter topics and custom processing stages to separate or correct bad events.
+Data Profiling
+https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
+https://docs.aws.amazon.com/glue/latest/dg/data-quality-getting-started.html
+https://aws.amazon.com/blogs/big-data/visualize-data-quality-scores-and-metrics-generated-by-aws-glue-data-quality/
 
-B3. Data Validations
-Validation is typically handled in consumers, stream processors, or connectors, which can enforce schema rules and route invalid messages to error topics. Kafka does not enforce schemas at the broker level, so schemas and validation policies must be defined and applied consistently across all producers and processing stages to avoid inconsistent data.
+Data Cleansing
+https://docs.aws.amazon.com/glue/latest/dg/author-job-glue.html
+https://docs.aws.amazon.com/databrew/latest/dg/what-is-databrew.html
+https://aws.amazon.com/glue/features/data-quality/
 
-B4. Data Quality Metrics
-Kafka exposes extensive operational metrics—such as throughput, latency, and error rates—that can highlight anomalies correlated with data quality issues. Semantic data quality metrics like completeness, validity, and uniqueness are not modeled in the platform and must be computed and visualized by external monitoring, DQ services, or custom applications.
+Data Validations
+https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
+https://docs.aws.amazon.com/glue/latest/dg/data-quality-getting-started.html
+https://aws.amazon.com/awstv/watch/6d59f292d5a/
 
-C1. Scalability
-Kafka is designed as a distributed, partitioned log that scales horizontally by adding brokers and partitions, and is routinely deployed for very high-volume, mission-critical workloads. Effective scaling depends on careful partitioning, keying, and cluster topology design, as well as replication and rack-awareness for resilience.
+Data Quality Metrics
+https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.html
+https://aws.amazon.com/blogs/big-data/visualize-data-quality-scores-and-metrics-generated-by-aws-glue-data-quality/
+https://docs.aws.amazon.com/glue/latest/dg/monitoring-awsglue-with-cloudwatch-metrics.html
 
-C2. Performance Optimization
-Kafka offers many tunable parameters—batch sizes, linger times, compression, acknowledgments, partition counts—that allow operators and developers to trade off latency, throughput, and durability. Achieving optimal performance often requires deep understanding of the storage model, I/O behavior, and coordinated tuning across producers, brokers, and consumers, since there is no built-in auto-tuning engine.
+Scalability
+https://docs.aws.amazon.com/glue/latest/dg/worker-types.html
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-jobs-job.html
+https://docs.aws.amazon.com/glue/latest/dg/monitor-debug-capacity.html
 
-D1. Encryption
-Kafka supports TLS for both client–broker and inter-broker communication, providing encryption in transit, and can rely on standard disk or filesystem encryption for data at rest. End-to-end payload encryption and key management are not handled natively and must be implemented at the application layer or integrated with external KMS and security infrastructure.
+Performance Optimization
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
+https://aws.amazon.com/blogs/big-data/scale-your-aws-glue-for-apache-spark-jobs-with-r-type-g-12x-and-g-16x-workers/
+https://medium.com/%40amuni/aws-glue-job-cost-optimization-right-sizing-matters-78a13b53a477
 
-D2. RBAC (Role-Based Access Control)
-Kafka’s authorization model is based on ACLs tied to principals from SASL, Kerberos, or TLS, allowing fine-grained control over access to topics, consumer groups, and cluster operations. These ACLs can be structured to approximate roles, but there is no first-class role object or centralized policy management interface in the core project, so governance typically relies on scripts and external tooling.
+Encryption
+https://docs.aws.amazon.com/glue/latest/dg/encryption-at-rest.html
+https://docs.aws.amazon.com/glue/latest/dg/encryption-in-transit.html
+https://docs.aws.amazon.com/glue/latest/dg/set-up-encryption.html
 
-D3. ABAC (Attribute-Based Access Control)
-Kafka’s built-in authorization checks only identities, resources, and operations and does not evaluate attributes like time, device, or data classification. Any attribute-based decisions must be implemented outside the broker, for example in edge gateways or application logic, meaning the platform itself does not enforce ABAC.
+RBAC (Role-Based Access Control)
+https://docs.aws.amazon.com/glue/latest/dg/security-iam.html
+https://docs.aws.amazon.com/glue/latest/dg/glue-policy-examples.html
+https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
 
-D4. NIST Compliance
-Kafka can be configured with encryption, access control, logging, and monitoring that map to many technical controls described in NIST 800-53, especially when integrated with enterprise identity and SIEM systems. The open-source project does not ship with NIST certification packages or predefined control mappings, so aligning a deployment with NIST expectations is the responsibility of the implementing organization.
+ABAC (Attribute-Based Access Control)
+https://docs.aws.amazon.com/glue/latest/dg/monitor-tags.html
+https://docs.aws.amazon.com/lake-formation/latest/dg/attribute-based-access-control.html
+https://docs.aws.amazon.com/organizations/latest/userguide/orgs_tagging_abac.html
 
-D5. FISMA / FedRAMP Compliance
-Kafka can run inside infrastructures that have achieved FedRAMP or FISMA authorization, relying on the surrounding environment’s controls and documentation. The software itself is not offered as a FedRAMP-authorized service, so any authorization to operate is granted to the composite system and hosting environment rather than to Kafka as a product.
+NIST Compliance
+https://docs.aws.amazon.com/glue/latest/dg/compliance.html
+https://aws.amazon.com/compliance/
+https://aws.amazon.com/compliance/hipaa-compliance/
 
-D1.1 Specialized Workflow Support
-Kafka topics, Streams topologies, and Connect pipelines form a strong backbone for event-driven workflows and dataflow graphs. The platform does not include DAG-based workflow modeling, task-level dependencies, or business process constructs; those are supplied by external workflow engines or orchestration systems that coordinate Kafka-based services.
+FISMA / FedRAMP Compliance
+https://aws.amazon.com/blogs/industries/fsi-services-spotlight-featuring-aws-glue/
+https://aws.amazon.com/compliance/fedramp/
+https://aws.amazon.com/compliance/services-in-scope/
 
-D1.2 Automation
-Core Kafka automates internal behaviors such as leader election, replication, and log compaction, and operators like Strimzi automate lifecycle tasks like cluster provisioning and rolling upgrades. Higher-level automation for schema changes, topic provisioning, or business workflows still requires custom scripts, CI/CD pipelines, or platform tooling layered on top.
+Specialized Workflow Support
+https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
+https://aws.amazon.com/blogs/big-data/orchestrate-an-etl-pipeline-using-aws-glue-workflows-triggers-and-crawlers-with-custom-classifiers/
+https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
 
-D1.3 Monitoring & Alerting
-Brokers and clients emit rich JMX metrics that can be scraped by systems like Prometheus and visualized in tools such as Grafana or commercial APM platforms, supporting detailed monitoring of throughput, lag, and health. Kafka itself does not provide a native monitoring UI or alert manager; alert rules, SLOs, and incident handling must be defined in the chosen observability stack.
+Automation
+https://docs.aws.amazon.com/glue/latest/dg/about-triggers.html
+https://docs.aws.amazon.com/glue/latest/dg/monitor-glue.html
+https://medium.com/machine-learning-reply-dach/orchestrate-etl-pipeline-using-aws-glue-workflows-2beac31dfb46
 
-E1. Intuitive Interface
-The open-source Kafka distribution is operated primarily through CLI tools and configuration files, with no bundled web-based management console or topic explorer. Administrative tasks such as topic creation, ACL management, and consumer lag inspection typically require comfort with command-line workflows or third-party UIs.
+Monitoring & Alerting
+https://docs.aws.amazon.com/glue/latest/dg/monitoring-awsglue-with-cloudwatch-metrics.html
+https://docs.aws.amazon.com/glue/latest/dg/monitor-profile-glue-job-cloudwatch-alarms.html
+https://www.teracloud.io/single-post/create-custom-metrics-for-aws-glue-jobs
 
-E2. Customization Options
-Kafka exposes many configuration options for brokers, topics, and clients, and supports pluggable components for authorization, quotas, and interceptors, enabling deep customization of behavior. This flexibility comes with complexity: meaningful customizations often require Java development and detailed understanding of internals to avoid misconfiguration and stability issues.
+Intuitive Interface
+https://docs.aws.amazon.com/glue/latest/dg/author-job-glue.html
+https://aws.amazon.com/about-aws/whats-new/2023/10/aws-glue-example-jobs-drag-drop-preview-layout/
+https://data.folio3.com/blog/aws-glue-studio-guide/
 
-E3. Documentation & Support
-The project provides extensive official documentation on concepts, APIs, configuration parameters, and operational practices, complemented by a large ecosystem of books, blogs, and conference talks. Formal SLAs, enterprise support, and opinionated “reference architectures” are obtained from commercial vendors and integrators rather than from the open-source project itself.
+Customization Options
+https://aws.amazon.com/glue/features/
+https://docs.aws.amazon.com/glue/latest/dg/dev-endpoints.html
+https://www.presidio.com/technical-blog/building-reusable-etl-pipelines-in-aws-glue-with-custom-visual-transforms/
 
-F1. Deployable to Multiple CSPs
-Kafka runs on all major cloud providers and on-prem environments, using VMs, containers, or Kubernetes, and can be managed consistently with tools like Strimzi. This infrastructure-agnostic design allows teams to choose their preferred cloud, move deployments over time, and maintain similar operational patterns across environments.
+Documentation & Support
+https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+https://aws.amazon.com/blogs/big-data/tag/aws-glue/
+https://aws.amazon.com/blogs/industries/fsi-services-spotlight-featuring-aws-glue/
 
-F2. Deployment Automatable
-Kafka fits well into infrastructure-as-code workflows: Terraform, Ansible, Helm charts, and Kubernetes operators are commonly used to provision clusters and manage configurations. Complex multi-region, multi-cluster, or hybrid topologies still require significant custom automation logic to coordinate networking, security, and replication.
+Deployable to Multiple CSPs
+https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+https://aws.amazon.com/glue/
+https://aws.amazon.com/compliance/services-in-scope/
 
-F3. Support for Different Configuration Languages
-At its core, Kafka reads simple properties files, which can be generated by any templating or IaC language and injected into containers or VMs. Kubernetes operators overlay this with YAML CRDs to express higher-level configuration, but the broker itself does not interpret multiple configuration syntaxes beyond standard properties.
+Deployment Automatable
+https://docs.aws.amazon.com/glue/latest/dg/set-up-iam.html
+https://repost.aws/questions/QU3xB522RjT36Wk2zlfSDY4A/version-control-for-glue-workflow-orchestration-jobs-and-triggers
+https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
 
-F4. Available as a Managed Service
-The Apache Kafka project provides software that organizations operate themselves, while Kafka-compatible managed services such as Confluent Cloud or AWS MSK are offered by separate vendors. As a result, any operational offloading, SLA guarantees, or managed upgrades come from those external services rather than from Kafka in its standalone form.
+Support for Different Configuration Languages
+https://cloudzero.com/blog/aws-glue/
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-api-jobs-job.html
+https://klamp.ai/blog/aws-glue-iam-actions-for-effective-data-integration-and-management
 
-F5. Containerization
-Kafka is widely deployed in containers, with well-maintained Docker images and Kubernetes operators that encode best practices for running stateful brokers. Running Kafka in containers demands careful handling of storage, networking, and resource allocation, since the project does not ship a turnkey, first-party container orchestration stack.
+Available as a Managed Service
+https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+https://aws.amazon.com/glue/features/data-quality/
+https://www.netcomlearning.com/blog/aws-glue
 
-G1. High Availability (HA)
-Kafka provides partition replication, leader election, and in-sync replica mechanisms that allow clusters to continue serving traffic when individual brokers fail. Achieving robust availability depends on correct configuration of replication factors, min.insync.replicas, and placement across racks or availability zones, as well as additional tooling for cross-region replication and disaster recovery.
+Containerization
+https://docs.aws.amazon.com/glue/latest/dg/disaster-recovery-resiliency.html
+https://docs.aws.amazon.com/glue/latest/dg/dev-endpoints.html
+https://aws.amazon.com/blogs/big-data/zero-etl-how-aws-is-tackling-data-integration-challenges/
+
+High Availability (HA)
+https://docs.aws.amazon.com/glue/latest/dg/disaster-recovery-resiliency.html
+https://docs.aws.amazon.com/databrew/latest/dg/disaster-recovery-resiliency.html
+https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/
+
+Distributed Support
+https://docs.aws.amazon.com/glue/latest/dg/worker-types.html
+https://aws.amazon.com/blogs/big-data/scale-your-aws-glue-for-apache-spark-jobs-with-r-type-g-12x-and-g-16x-workers/
+https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format.html
+
+Zero-Down time maintenance
+https://docs.aws.amazon.com/glue/latest/dg/security.html
+https://docs.aws.amazon.com/glue/latest/dg/workflows_overview.html
+https://aws.amazon.com/blogs/big-data/combine-aws-glue-and-amazon-mwaa-to-build-advanced-vpc-selection-and-failover-strategies/
+
+-----------------------------------------------
+
+DATA BATCH - GOOGLE CLOUD DATA FLOW 
+
+ETL/ELT
+https://docs.cloud.google.com/dataflow/docs/overview
+https://cloud.google.com/products/dataflow
+https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
+
+Standard Connectors & Adapters
+https://docs.cloud.google.com/dataflow/docs/guides/io-connector-best-practices
+https://beam.apache.org/documentation/io/connectors/
+https://docs.cloud.google.com/dataflow/docs/guides/templates/provided-io
+
+API Support
+https://docs.cloud.google.com/dataflow/docs/apis
+https://docs.cloud.google.com/dataflow/docs/reference/rest
+https://cloud.google.com/dataflow/docs/reference/rest/v1b3/projects.locations.templates
+
+Data Standard Support (formats, serialization, interchange)
+https://beam.apache.org/documentation/io/io-standards/
+https://beam.apache.org/documentation/programming-guide/
+https://docs.cloud.google.com/dataflow/docs/tutorials/ecommerce-java
+
+Metadata Management
+https://www.skills.google/course_templates/709
+https://medium.com/@poojakhaire000/google-cloud-dataplex-data-catalog-45e37964dbd0
+https://cloud.google.com/blog/products/data-analytics/generate-metadata-automatically-in-google-data-cloud
+
+Data Exchange Protocols
+https://docs.cloud.google.com/dataflow/docs/guides/io-connector-best-practices
+https://beam.apache.org/documentation/io/connectors/
+https://github.com/GoogleCloudPlatform/processing-logs-using-dataflow
+
+Data Profiling
+https://docs.cloud.google.com/dataplex/docs/data-profiling-overview
+https://cloud.google.com/blog/products/data-analytics/dataplex-data-profiling-and-automatic-data-quality-are-ga
+https://www.skills.google/focuses/67211
+
+Data Cleansing
+https://medium.com/@manik.ruet08/data-validation-and-quality-checks-in-streaming-pipelines-with-dataflow-bigquery-f5657ac379e2
+https://beam.apache.org/documentation/ml/data-processing/
+https://docs.cloud.google.com/dataflow/docs/tutorials/ecommerce-java
+
+Data Validations
+https://cloud.google.com/blog/products/data-analytics/announcing-dataflow-pipeline-validation
+https://beam.apache.org/documentation/programming-guide/
+https://github.com/GoogleCloudPlatform/spanner-data-validator
+
+Data Quality Metrics
+https://docs.cloud.google.com/dataplex/docs/data-quality-tasks-overview
+https://cloud.google.com/blog/products/data-analytics/dataplex-data-profiling-and-automatic-data-quality-are-ga
+https://medium.com/@rajkovic_marina/data-governance-on-google-cloud-platform-3e7f15dfbb71
+
+Scalability
+https://docs.cloud.google.com/dataflow/docs/overview
+https://cloud.google.com/products/dataflow
+https://docs.cloud.google.com/dataflow/quotas
+
+Performance Optimization
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-best-practices
+https://docs.cloud.google.com/dataflow/docs/guides/flexrs
+https://blog.allegro.tech/2024/06/cost-optimization-data-pipeline-gcp.html
+
+Encryption
+https://docs.cloud.google.com/dataflow/docs/guides/customer-managed-encryption-keys
+https://cloud.google.com/security/encryption/default-encryption
+https://cloud.google.com/security/encryption-at-rest/default-encryption
+
+RBAC (Role-Based Access Control)
+https://docs.cloud.google.com/dataflow/docs/security/permissions-and-authentication
+https://docs.cloud.google.com/dataflow/docs/concepts/security-and-permissions
+https://cloud.google.com/iam/docs/understanding-roles
+
+ABAC (Attribute-Based Access Control)
+https://cloud.google.com/iam/docs/conditions-overview
+https://cloud.google.com/iam/docs/conditions-overview#attributes
+https://cloud.google.com/blog/products/identity-security/better-control-cloud-resources-with-iam-conditions
+
+NIST Compliance
+https://cloud.google.com/security/compliance/nist
+https://cloud.google.com/blog/products/identity-security/google-cloud-achieves-nist-800-53-high
+https://cloud.google.com/security/compliance
+
+FISMA / FedRAMP Compliance
+https://cloud.google.com/security/compliance/fedramp
+https://cloud.google.com/blog/products/identity-security/google-cloud-achieves-fedramp-high-equivalency
+https://cloud.google.com/security/compliance/offerings#us-government
+
+Specialized Workflow Support
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-workflows
+https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
+https://cloud.google.com/blog/products/data-analytics/manage-your-dataflow-jobs-at-scale-with-dataflow-pipelines
+
+Automation
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-workflows
+https://docs.cloud.google.com/composer/docs/composer-3/launch-dataflow-pipelines
+https://cloud.google.com/blog/products/data-analytics/manage-your-dataflow-jobs-at-scale-with-dataflow-pipelines
+
+Monitoring & Alerting
+https://docs.cloud.google.com/dataflow/docs/guides/using-cloud-monitoring
+https://docs.cloud.google.com/dataflow/docs/audit-logging
+https://www.dynatrace.com/hub/detail/google-cloud-dataflow/
+
+Intuitive Interface
+https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines
+https://docs.cloud.google.com/dataflow/docs/guides/data-pipelines#console
+https://www.skills.google/paths/16/course_templates/229
+
+Customization Options
+https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
+https://docs.cloud.google.com/dataflow/docs/runner-v2
+https://beam.apache.org/documentation/programming-guide/
+
+Documentation & Support
+https://docs.cloud.google.com/dataflow/docs/overview
+https://cloud.google.com/products/dataflow
+https://www.skills.google/paths/16/course_templates/229
+
+Deployable to Multiple CSPs
+https://beam.apache.org/get-started/beam-overview/
+https://beam.apache.org/documentation/runners/capability-matrix/
+https://beam.apache.org/documentation/runners/dataflow/
+
+Deployment Automatable
+https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
+https://docs.cloud.google.com/dataflow/docs/pipeline-lifecycle
+https://cloud.google.com/blog/products/data-analytics/tips-and-tricks-to-get-your-cloud-dataflow-pipelines-into-production
+
+Support for Different Configuration Languages
+https://docs.cloud.google.com/dataflow/docs/concepts/beam-programming-model
+https://beam.apache.org/get-started/beam-overview/
+https://beam.apache.org/documentation/sdks/python/
+
+Available as a Managed Service
+https://cloud.google.com/products/dataflow
+https://docs.cloud.google.com/dataflow/docs/overview
+https://integrate.io/blog/best-etl-tools-for-big-data-multi-cloud-scalability/
+
+Containerization
+https://docs.cloud.google.com/dataflow/docs/guides/templates/using-flex-templates
+https://docs.cloud.google.com/dataflow/docs/guides/templates/creating-flex-templates
+https://docs.cloud.google.com/dataflow/docs/guides/using-container-images
+
+High Availability (HA)
+https://cloud.google.com/dataflow/sla
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-best-practices
+https://cloud.google.com/blog/products/data-analytics/designing-your-cloud-dataflow-disaster-recovery-strategy
+
+Distributed Support
+https://docs.cloud.google.com/dataflow/docs/overview
+https://docs.cloud.google.com/dataflow/docs/resources/locations
+https://beam.apache.org/get-started/beam-overview/
+
+Zero-Down time maintenance
+https://docs.cloud.google.com/dataflow/docs/guides/updating-a-pipeline
+https://cloud.google.com/blog/products/gcp/managing-streaming-pipelines-in-google-cloud-dataflow-just-got-better
+https://docs.cloud.google.com/dataflow/docs/guides/pipeline-lifecycle
+
+---------------------------------------------------------------------------
+
+BATCH - MICROSOFT DATA FACTORY
+
+
+
+Microsoft Data Factory
+ETL/ELT process support
+https://learn.microsoft.com/en-us/azure/data-factory/introduction
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipelines-activities
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
+
+Microsoft Data Factory
+Standard Connectors & Adapters
+https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
+https://learn.microsoft.com/en-us/connectors/azuredatafactory/
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
+
+Microsoft Data Factory
+API Support
+https://learn.microsoft.com/en-us/rest/api/datafactory/
+https://learn.microsoft.com/en-us/rest/api/datafactory/pipelines
+https://learn.microsoft.com/en-us/azure/data-factory/quickstart-create-data-factory-rest-api
+
+Microsoft Data Factory
+Data Standard Support (formats, serialization, interchange)
+https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
+https://learn.microsoft.com/en-us/azure/data-factory/copy-activity-overview
+https://learn.microsoft.com/en-us/azure/data-factory/connector-rest
+
+Microsoft Data Factory
+Metadata Management
+https://learn.microsoft.com/en-us/azure/data-factory/connect-data-factory-to-azure-purview
+https://learn.microsoft.com/en-us/purview/data-map-lineage-azure-data-factory
+https://learn.microsoft.com/en-us/azure/data-factory/how-to-discover-explore-purview-data
+
+Microsoft Data Factory
+Data Exchange Protocols
+https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
+https://learn.microsoft.com/en-us/azure/data-factory/connector-rest
+https://learn.microsoft.com/en-us/azure/data-factory/data-movement-security-considerations
+
+Microsoft Data Factory
+Data Profiling
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-debug-mode
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
+https://learn.microsoft.com/en-us/azure/data-factory/wrangling-overview
+
+Microsoft Data Factory
+Data Cleansing
+https://learn.microsoft.com/en-us/azure/data-factory/data-flow-transformation-overview
+https://learn.microsoft.com/en-us/azure/data-factory/wrangling-overview
+https://learn.microsoft.com/en-us/azure/data-factory/wrangling-tutorial
+
+Microsoft Data Factory
+Data Validations
+https://learn.microsoft.com/en-us/azure/data-factory/data-flow-transformation-overview
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-debug-mode
+
+Microsoft Data Factory
+Data Quality Metrics
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory-reference
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-visually
+
+Microsoft Data Factory
+Scalability
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
+https://learn.microsoft.com/en-us/azure/data-factory/create-self-hosted-integration-runtime
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-performance
+
+Microsoft Data Factory
+Performance Optimization
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-performance
+https://learn.microsoft.com/en-us/azure/data-factory/copy-activity-overview
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory
+
+Microsoft Data Factory
+Encryption
+https://learn.microsoft.com/en-us/azure/data-factory/secure-your-azure-data-factory
+https://learn.microsoft.com/en-us/azure/data-factory/data-movement-security-considerations
+https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/data-factory-security-baseline
+
+Microsoft Data Factory
+RBAC (Role-Based Access Control)
+https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/data-factory-security-baseline
+https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+https://learn.microsoft.com/en-us/azure/data-factory/secure-your-azure-data-factory
+
+Microsoft Data Factory
+ABAC (Attribute-Based Access Control)
+https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/data-factory-security-baseline
+https://learn.microsoft.com/en-us/azure/data-factory/secure-your-azure-data-factory
+https://learn.microsoft.com/en-us/azure/governance/policy/samples/gov-fedramp-high
+
+Microsoft Data Factory
+NIST Compliance
+https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/data-factory-security-baseline
+https://learn.microsoft.com/en-us/azure/governance/policy/samples/gov-fedramp-high
+https://learn.microsoft.com/en-us/azure/azure-government/compliance/azure-services-in-fedramp-auditscope
+
+Microsoft Data Factory
+FISMA / FedRAMP Compliance
+https://learn.microsoft.com/en-us/azure/compliance/offerings/offering-fedramp
+https://learn.microsoft.com/en-us/azure/azure-government/compliance/azure-services-in-fedramp-auditscope
+https://learn.microsoft.com/en-us/azure/governance/policy/samples/gov-fedramp-high
+
+Microsoft Data Factory
+Specialized Workflow Support
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipelines-activities
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipeline-execution-triggers
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
+
+Microsoft Data Factory
+Automation
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-automate-azure-pipelines
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-pipeline-execution-triggers
+
+Microsoft Data Factory
+Monitoring & Alerting
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-visually
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory-reference
+
+Microsoft Data Factory
+Intuitive Interface
+https://learn.microsoft.com/en-us/azure/data-factory/
+https://learn.microsoft.com/en-us/azure/data-factory/how-to-manage-studio-preview-exp
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-visually
+
+Microsoft Data Factory
+Customization Options
+https://learn.microsoft.com/en-us/azure/data-factory/data-flow-script
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
+https://learn.microsoft.com/en-us/rest/api/datafactory/v2
+
+Microsoft Data Factory
+Documentation & Support
+https://learn.microsoft.com/en-us/azure/data-factory/
+https://learn.microsoft.com/en-us/azure/data-factory/introduction
+https://learn.microsoft.com/en-us/azure/data-factory/monitor-data-factory
+
+Microsoft Data Factory
+Deployable to Multiple CSPs
+https://learn.microsoft.com/en-us/azure/data-factory/connector-overview
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
+https://learn.microsoft.com/en-us/connectors/azuredatafactory/
+
+Microsoft Data Factory
+Deployment Automatable
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-automate-azure-pipelines
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-sample-script
+
+Microsoft Data Factory
+Support for Different Configuration Languages
+https://learn.microsoft.com/en-us/rest/api/datafactory/
+https://learn.microsoft.com/en-us/rest/api/datafactory/v2
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
+
+Microsoft Data Factory
+Available as a Managed Service
+https://learn.microsoft.com/en-us/azure/data-factory/introduction
+https://learn.microsoft.com/en-us/azure/data-factory/
+https://learn.microsoft.com/en-us/azure/data-factory/secure-your-azure-data-factory
+
+Microsoft Data Factory
+Containerization
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
+https://learn.microsoft.com/en-us/azure/data-factory/create-self-hosted-integration-runtime
+https://davidalzamendi.com/self-hosted-integration-runtime-cluster/
+
+Microsoft Data Factory
+High Availability (HA)
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
+https://learn.microsoft.com/en-us/azure/data-factory/create-self-hosted-integration-runtime
+https://www.pythian.com/blog/technical-track/azure-data-factory-self-hosted-ir-scaling-best-practices-and-disaster-recovery-solutions
+
+Microsoft Data Factory
+Distributed Support
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-integration-runtime
+https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-performance
+
+Microsoft Data Factory
+Zero-Down time maintenance
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-automate-azure-pipelines
+https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-sample-script
+
+
+
+
