@@ -1,219 +1,244 @@
-```text
-OpenShift Cross-Region API Connectivity Checklist
+Private jumpbox
+  ↓
+Jumpbox security group egress
+  ↓
+Private subnet NACL outbound
+  ↓
+Private subnet route table
+  ↓
+NAT Gateway in a public subnet
+  ↓
+Public subnet route table
+  ↓
+Internet Gateway
+  ↓
+Internet
+  ↓
+Registry endpoint, for example registry.redhat.io / quay.io / docker.io
+==========================================================================
 
-Goal:
-Enable private API connectivity between OpenShift clusters/VPCs across two AWS regions using Transit Gateway peering.
+What must be true
+1. Jumpbox security group
 
-Example traffic paths:
-- East jumpbox -> West OpenShift API on TCP 6443
-- West jumpbox -> East OpenShift API on TCP 6443
+The jumpbox SG must allow outbound HTTPS:
 
+Outbound:
+TCP 443 to 0.0.0.0/0
 
-1. Connectivity Components Required
+or at least to the registry IP ranges, though 0.0.0.0/0 is the normal test rule.
 
-The following infrastructure components must exist:
+Security groups are stateful, so inbound return traffic does not need a separate SG rule.
 
-- East VPC
-- West VPC
-- East Transit Gateway
-- West Transit Gateway
-- East VPC attachment to East TGW
-- West VPC attachment to West TGW
-- TGW peering attachment between East TGW and West TGW
-- Private DNS / Route 53 hosted zone association so the remote API hostname resolves privately
+2. Private subnet route table
 
-The TGW peering attachment is only the inter-region connection. It does not automatically make the VPCs route to each other. Route table entries are still required on both sides.
+The route table associated with the private jumpbox subnet needs:
 
+Destination: 0.0.0.0/0
+Target:      NAT Gateway
 
-2. Route Table Requirements
+Not the internet gateway.
 
-Routing has two layers:
+So for a private subnet:
 
-- VPC subnet route tables
-- TGW route tables
+0.0.0.0/0 → nat-xxxxxxxx
+3. NAT Gateway subnet
 
-The VPC subnet route table sends traffic to the local TGW.
+The NAT Gateway must live in a public subnet.
 
-The TGW route table decides which TGW attachment receives the traffic next.
+That public subnet’s route table needs:
 
+Destination: 0.0.0.0/0
+Target:      Internet Gateway
 
-2.1 East-to-West Path
+So for the NAT subnet:
 
-For traffic from East to West:
+0.0.0.0/0 → igw-xxxxxxxx
 
-East VPC subnet route table:
-Destination: West VPC CIDR
-Target:      East TGW / East TGW attachment option
+If the NAT Gateway is in a subnet that does not route to an IGW, private instances can route to the NAT but the NAT cannot reach the internet.
 
-East TGW route table:
-Destination: West VPC CIDR
-Target:      TGW peering attachment
+4. NAT Gateway public IP
 
-West TGW route table:
-Destination: East VPC CIDR
-Target:      West VPC attachment
+The NAT Gateway must have an Elastic IP / public address.
 
-West VPC subnet route table:
-Destination: East VPC CIDR
-Target:      West TGW / West TGW attachment option
+For AWS NAT Gateway, this is normally part of creating a public NAT Gateway.
 
-The West VPC subnet route is required for return traffic. Without it, the request may arrive, but the response cannot return to the East source.
+5. Private subnet NACL
 
+The NACL on the private jumpbox subnet must allow the outbound HTTPS request and the inbound ephemeral return traffic.
 
-2.2 West-to-East Path
+Minimum logic:
 
-For traffic from West to East:
+Outbound:
+Allow TCP 443 to 0.0.0.0/0
 
-West VPC subnet route table:
-Destination: East VPC CIDR
-Target:      West TGW / West TGW attachment option
+Inbound:
+Allow TCP 1024-65535 from 0.0.0.0/0
 
-West TGW route table:
-Destination: East VPC CIDR
-Target:      TGW peering attachment
+The return packet comes back to the jumpbox’s random source port, not port 443.
 
-East TGW route table:
-Destination: West VPC CIDR
-Target:      East VPC attachment
+6. Public NAT subnet NACL
 
-East VPC subnet route table:
-Destination: West VPC CIDR
-Target:      East TGW / East TGW attachment option
+The NACL on the NAT Gateway’s public subnet must allow NAT traffic in both directions.
 
-The East VPC subnet route is required for return traffic.
+Minimum logic:
 
+Inbound:
+Allow TCP 443 from private subnet CIDR
 
-3. Security Group Requirements
+Outbound:
+Allow TCP 443 to 0.0.0.0/0
 
-For OpenShift API testing, the important port is:
+Inbound:
+Allow TCP 1024-65535 from 0.0.0.0/0
 
-TCP 6443
+Outbound:
+Allow TCP 1024-65535 to private subnet CIDR
 
-For East jumpbox -> West OpenShift API:
+Many environments simplify this by allowing all outbound and appropriate inbound ephemeral/HTTPS ranges on the NAT subnet NACL.
 
-West API load balancer SG:
-Inbound TCP 6443 from East VPC CIDR
+Practical troubleshooting order
 
-West master/control-plane SG:
-Inbound TCP 6443 from East VPC CIDR, if the masters see the original East source IP
+Check these in this order:
 
-For West jumpbox -> East OpenShift API:
+1. Private jumpbox subnet route table:
+   0.0.0.0/0 → NAT Gateway
 
-East API load balancer SG:
-Inbound TCP 6443 from West VPC CIDR
+2. NAT Gateway subnet route table:
+   0.0.0.0/0 → Internet Gateway
 
-East master/control-plane SG:
-Inbound TCP 6443 from West VPC CIDR, if the masters see the original West source IP
+3. NAT Gateway state:
+   Available
 
-The master/control-plane SG may or may not be required depending on how the load balancer and target group preserve client source IP. During troubleshooting, the safer setup is to allow TCP 6443 from the remote VPC CIDR on both:
+4. Jumpbox SG outbound:
+   TCP 443 to 0.0.0.0/0
 
-- API load balancer SG
-- master/control-plane SG
+5. Private subnet NACL:
+   outbound 443 allowed
+   inbound ephemeral return allowed
 
+6. NAT public subnet NACL:
+   private subnet → internet 443 allowed
+   internet → private subnet ephemeral return allowed
 
-4. NACL Requirements
+7. DNS:
+   registry hostname resolves
 
-NACLs are stateless. Both the forward request and return response must be allowed.
+8. Test:
+   curl -vk https://registry.redhat.io
 
-For East jumpbox -> West API on TCP 6443:
+The most common break is:
 
-East jumpbox subnet outbound:
-Allow TCP 6443 to West VPC CIDR
+Private subnet has no default route to NAT
 
-West API subnet inbound:
-Allow TCP 6443 from East VPC CIDR
+or:
 
-West API subnet outbound:
-Allow TCP ephemeral ports to East VPC CIDR
+NAT Gateway subnet does not have default route to IGW
 
-East jumpbox subnet inbound:
-Allow TCP ephemeral ports from West VPC CIDR
+or:
 
-For West jumpbox -> East API on TCP 6443, mirror the same rules.
+NACL allows 443 but blocks ephemeral return traffic
 
-Typical ephemeral range:
 
-TCP 1024-65535
 
-Some environments use a narrower approved ephemeral range. The key point is that return traffic does not come back to the client on TCP 6443. It returns to the client source port, which is usually an ephemeral port.
 
 
-5. DNS Requirements
 
-The API hostname used by the remote jumpbox must resolve to the private API endpoint.
 
-Typical OpenShift API hostname:
 
-api.<cluster-name>.<base-domain>
 
-Internal API hostname may also exist:
+=========================================
+Create a New Keycloak Client for a Tenant
+===========================================
 
-api-int.<cluster-name>.<base-domain>
+1. Collect the tenant callback URL
 
-Verify from the source jumpbox:
+Before creating the client, get the tenant’s callback / redirect URI.
 
-dig +short api.<cluster-name>.<base-domain>
+Example:
 
-Expected result:
-A private IP associated with the target cluster API endpoint.
+https://their-app.example.com/callback
 
-If DNS resolves to the wrong endpoint, an old record, a public IP, or nothing, the routing and security configuration can be correct but curl will still fail.
+The exact path depends on the tenant’s application or framework.
 
 
-6. Basic Test Command
+2. Create the client
 
-From the source jumpbox:
+In the Keycloak Admin Console, go to:
 
-curl -vk --connect-timeout 5 https://api.<cluster-name>.<base-domain>:6443/version
+Realm → Clients → Create client
 
-Useful result meanings:
+Use the following settings:
 
-Connected:
-Network path works. Remaining issues are TLS, API, or authentication related.
+Client type: OpenID Connect
+Client ID: <tenant-client-name>
+Client authentication: On
+Authorization: Off, unless Keycloak authorization services are required
+Standard flow: On
+Direct access grants: Off, unless password-grant testing is required
+Service accounts: Off, unless this is machine-to-machine access
 
-Connection timed out:
-Usually routing, TGW route table association, security group, NACL, or return path issue.
+This creates a confidential OIDC client, which is appropriate when issuing a client secret.
 
-Connection refused:
-Routing reached something, but the destination IP/port is wrong or the service is not listening.
 
-No route to host:
-Usually local subnet routing or host/network-level routing problem.
+3. Configure redirect settings
 
+After the client is created, configure the redirect URI.
 
-7. Mental Model
+Valid redirect URIs:
 
-The correct mental model is:
+https://their-app.example.com/callback
 
-VPC subnet route table:
-Sends remote VPC CIDR traffic to the local TGW.
+Optional logout redirect setting:
 
-Local TGW route table:
-Sends remote VPC CIDR traffic to the TGW peering attachment.
+Valid post logout redirect URIs:
 
-Remote TGW route table:
-Receives traffic from peering and sends it to the remote VPC attachment.
+https://their-app.example.com/*
 
-Remote VPC subnet route table:
-Must know how to send replies back to the opposite VPC CIDR.
+Web Origins can usually be set to:
 
-Security groups:
-Must allow TCP 6443 on the API side.
++
 
-NACLs:
-Must allow TCP 6443 forward traffic and ephemeral return traffic.
+The plus sign allows Keycloak to derive allowed web origins from the configured redirect URIs. Web Origins usually affects browser CORS calls, not the normal login redirect itself.
 
 
-8. Main Items Changed During Troubleshooting
+4. Copy the client secret
 
-The main fixes were:
+Open the client and go to the Credentials tab.
 
-- Added remote VPC CIDR routes to subnet route tables on both sides.
-- Confirmed TGW route tables and TGW peering routes.
-- Confirmed the TGW attachment associations were using the route tables containing the needed routes.
-- Added or confirmed TCP 6443 on the API load balancer security group.
-- Added or confirmed TCP 6443 on master/control-plane security groups where needed.
-- Confirmed NACLs allowed forward TCP 6443 traffic and return ephemeral traffic.
+Copy the generated client secret.
 
-Adding TCP 6443 to the API load balancer security group was definitely required in this case because connectivity began working after that change.
+
+5. Provide the tenant with the connection details
+
+Give the tenant the following values:
+
+Client ID:
+<tenant-client-name>
+
+Client Secret:
+<client-secret>
+
+Registered Callback / Redirect URI:
+https://their-app.example.com/callback
+
+Discovery URL:
+https://<keycloak-host>/realms/<realm-name>/.well-known/openid-configuration
+
+
+6. Security note
+
+Avoid overly broad redirect URIs unless there is a specific reason.
+
+Preferred:
+
+https://their-app.example.com/callback
+
+Avoid when possible:
+
+https://their-app.example.com/*
+
+The redirect URI is an important security control because it determines where Keycloak is allowed to send authentication responses.
 ```
+
+
+
