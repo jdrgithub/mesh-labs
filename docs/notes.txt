@@ -1,465 +1,228 @@
+You’re right. A clearer way to describe this is to separate **what exists** from **what rules must be added to it**.
 
+There are really four categories:
 
-1. Create a realm in Keycloak
-Create a dedicated realm for OpenShift authentication.
-Example:
-openshift
-The realm URL becomes:
-https://<keycloak-host>/realms/openshift
-This URL is the OIDC issuer OpenShift will use.
-
-2. Create the OpenShift client in Keycloak
-In the realm:
-Clients → Create
-Set:
-Client ID: openshift-console-client
-Client type: OpenID Connect
-After creation configure:
-Client authentication: ON
-Standard Flow: ON
-Direct Access Grants: OFF
-
-3. Configure redirect URIs
-In the client settings add:
-https://oauth-openshift.apps.<cluster-domain>/oauth2callback/*
-This allows the OAuth callback from OpenShift.
-
-4. Capture the Keycloak client secret
-In the client:
-Clients → openshift-console-client → Credentials
-Copy the client secret.
-
-5. Store the client secret in OpenShift
-Create the secret referenced by the OAuth config.
-oc create secret generic keycloak-client-secret \
- -n openshift-config \
- --from-literal=clientSecret=<KEYCLOAK_SECRET>
-
-6. Configure the OpenShift OAuth identity provider
-Edit the OAuth object:
-oc edit oauth cluster
-Add an OpenID provider.
-Example:
-identityProviders:
-- name: keycloak
- mappingMethod: claim
- type: OpenID
- openID:
-   clientID: openshift-console-client
-   clientSecret:
-     name: keycloak-client-secret
-   issuer: https://<keycloak-host>/realms/openshift
-   claims:
-     preferredUsername:
-     - preferred_username
-     name:
-     - name
-     email:
-     - email
-     groups:
-     - groups
-OpenShift automatically reloads the OAuth server.
-
-7. Configure group mapping in Keycloak
-In Keycloak create an admin group:
-system:masters
-Add your user to that group.
-
-8. Add a groups mapper
-In the client scope (often the automatically created scope):
-openshift-console-client-dedicated
-Create a mapper:
-Mapper type: Group Membership
-Name: groups
-Token Claim Name: groups
-Add to ID token: ON
-Add to access token: ON
-Add to userinfo: ON
-This ensures the token contains:
-groups: ["system:masters"]
-
-9. Verify user claims
-The token returned by Keycloak must include:
-preferred_username
-groups
-OpenShift uses these to create the user identity and map RBAC.
-
-10. Login flow
-The final authentication flow is:
-OpenShift console
-     ↓
-oauth-openshift
-     ↓
-Keycloak login
-     ↓
-OIDC token returned
-     ↓
-OpenShift creates user
-     ↓
-RBAC via system:masters
-
-11. Optional cleanup
-After Keycloak login works, the bootstrap account can be removed:
-oc delete secret kubeadmin -n kube-system
-
-
-
-
-
-
-
-
-
-1. Redirect Handler Error Means the IdP Was Never Activated
-Initial error:
-unable to locate redirect handler
-Key insight:
-This does not mean networking or Keycloak login failed.
-It means:
-OAuth server did not register the IdP internally
-OpenShift only creates a redirect handler after the IdP successfully initializes.
-
-2. The Authentication Operator Logs Are the Source of Truth
-The critical evidence came from the authentication operator logs:
-failed to apply IDP config
-tls: failed to verify certificate
-x509: certificate signed by unknown authority
-This proved:
-OAuth initialization failed
-Therefore the IdP never became active.
-
-3. Curl Tests With -k Masked the Real Problem
-Earlier tests succeeded because they used:
-curl -k
-That bypasses TLS verification.
-The OAuth server does not bypass TLS validation, so it rejected the Keycloak endpoint.
-Key lesson:
-Always test TLS the same way the service will.
-
-4. The Fix Was Adding the Keycloak CA to OAuth
-The successful fix was:
-Provide the Keycloak CA bundle in the OAuth IdP configuration
-Mechanism:
-ConfigMap (openshift-config)
-↓
-Referenced in OAuth CR
-↓
-Authentication operator reloads config
-↓
-OAuth pods restart
-↓
-IdP successfully initializes
-Once trusted, the OAuth server successfully loaded the provider.
-
-5. Group Claim Mapping Can Break Authentication
-After TLS was fixed, the next error appeared:
-Group "system:masters" is invalid
-Cause:
-Keycloak groups claim included system:masters
-OpenShift group objects cannot contain :.
-Fix:
-Remove or remap invalid groups from the Keycloak group mapper
-
-6. Manual OAuth URLs Can Cause Parameter Errors
-The later error:
-error handling auth request: requested parameter not sent
-was caused by testing with an incomplete authorization URL.
-The correct approach:
-Use the OpenShift console login flow
-The console automatically generates the correct OAuth request.
-
-7. The Final Working Flow
-After fixes:
-Browser
-↓
-OpenShift console
-↓
-oauth-openshift authorize
-↓
-Redirect to Keycloak
-↓
-Keycloak login
-↓
-Return authorization code
-↓
-OAuth validates token
-↓
-User created / mapped
-↓
-Login successful
-
-8. Core Lessons for Future OIDC Troubleshooting
-The most important diagnostic rules that emerged:
-Rule 1
-"unable to locate redirect handler"
-= IdP failed initialization
-Check authentication operator logs immediately.
-
-Rule 2
-Curl success does not prove TLS trust.
-Verify certificate trust.
-
-Rule 3
-The authentication operator logs reveal IdP failures.
-OAuth pod logs often do not.
-
-Rule 4
-OIDC group claims must be valid OpenShift group names.
-Invalid characters will break login.
-
-Final Summary
-The successful resolution required fixing three separate layers:
-TLS trust between OpenShift OAuth and Keycloak
-
-
-Invalid group mapping from Keycloak claims
-
-
-Correct OAuth authorization request parameters
-
-
-Once those were resolved, the OIDC authentication flow worked as designed.
-Based on these results and the doc I gave you, give me instructions for this openshift/keycloak setup
-Below is a clean procedure for integrating Keycloak with OpenShift OAuth using OIDC, distilled from the troubleshooting you just completed. It focuses only on the steps that actually matter and the pitfalls you encountered.
-
-1. Create the Keycloak Client
-In Keycloak, create a client for OpenShift.
-Client type: OpenID Connect
-Important settings:
-Client ID
-openshift-console-client
-Access Type
-confidential
-Valid Redirect URIs
-https://oauth-openshift.apps.<cluster-domain>/oauth2callback/<provider-name>
-https://oauth-openshift.apps.<cluster-domain>/oauth2callback/*
-Web Origins
-*
-Root URL
-(blank)
-
-2. Configure Keycloak Mappers
-OpenShift requires specific claims.
-Add these mappers in Keycloak:
-Preferred Username mapper
-Token Claim Name: preferred_username
-Group mapper
-Token Claim Name: groups
-Important rule:
-Do not send group names containing : because OpenShift group objects cannot contain colons.
-Avoid values like:
-system:masters
-
-3. Obtain the Keycloak Client Secret
-In Keycloak:
-Clients → openshift-console-client → Credentials
-Copy the secret.
-Create a secret in OpenShift.
-oc create secret generic keycloak-client-secret \
- --from-literal=clientSecret=<secret> \
- -n openshift-config
-
-4. Export the Keycloak CA Certificate
-The OAuth server must trust the Keycloak certificate.
-Export the certificate chain:
-openssl s_client -showcerts -connect keycloak.apps.<cluster-domain>:443 </dev/null
-Extract the CA certificate.
-Save as
-keycloak-ca.crt
-
-5. Create the CA ConfigMap
-Create the ConfigMap referenced by OAuth.
-oc create configmap keycloak-ca \
- --from-file=ca.crt=keycloak-ca.crt \
- -n openshift-config
-
-6. Configure the OpenShift OAuth Identity Provider
-Edit the cluster OAuth object.
-oc edit oauth cluster
-Add the Keycloak IdP.
-spec:
- identityProviders:
- - name: keycloak
-   mappingMethod: claim
-   type: OpenID
-   openID:
-     issuer: https://keycloak.apps.<cluster-domain>/realms/<realm>
-     clientID: openshift-console-client
-     clientSecret:
-       name: keycloak-client-secret
-     ca:
-       name: keycloak-ca
-     claims:
-       preferredUsername:
-       - preferred_username
-       groups:
-       - groups
-       email:
-       - email
-Save the object.
-
-7. Wait for Authentication Operator Reconciliation
-The authentication operator will:
-Reload OAuth configuration
-Restart oauth-openshift pods
-Register redirect handler
-Check status:
-oc get clusteroperators authentication
-
-8. Test Login
-Open the OpenShift console.
-https://console-openshift-console.apps.<cluster-domain>
-Click the Keycloak login button.
-Expected flow:
-OpenShift
-→ OAuth authorize
-→ Redirect to Keycloak
-→ User login
-→ Redirect back to OpenShift
-→ OAuth validates token
-→ User created
-
-9. Validate the Integration
-Confirm the user objects.
-oc get users
-Confirm identity mapping.
-oc get identities
-
-10. Troubleshooting Checklist
-If login fails, check these in order.
-1. Authentication operator logs
-oc logs -n openshift-authentication-operator deploy/authentication-operator
-Common error
-certificate signed by unknown authority
-Fix by adding CA bundle.
-
-2. OIDC discovery endpoint
-https://keycloak.apps.<cluster>/realms/<realm>/.well-known/openid-configuration
-Must return JSON.
-
-3. Issuer must match exactly
-Issuer in OAuth config must equal the issuer in the discovery document.
-
-4. Groups must not contain colons
-Invalid example
-system:masters
-
-Final Architecture
-Working authentication flow:
-Browser
-↓
-OpenShift Console
-↓
-OAuth Server
-↓
-Keycloak OIDC
-↓
-User authentication
-↓
-Token returned
-↓
-OpenShift validates claims
-↓
-User + Identity objects created
-
-If useful, I can also give you a short production-grade checklist for deploying Keycloak as an OpenShift IdP that avoids every failure you encountered during this troubleshooting.
-Give me the main commands that were useful in troubleshooting this. Put them in a code window with a comment above each. Put in as many as you can.
-# View the OpenShift OAuth configuration (verify IdP definition, issuer, clientID, claims)
-oc get oauth cluster -o yaml
-
-
-# Edit the OAuth configuration to add or modify the Keycloak IdP
-oc edit oauth cluster
-
-
-# Confirm the configured IdP names (useful when troubleshooting redirect handler errors)
-oc get oauth cluster -o jsonpath='{.spec.identityProviders[*].name}'
-
-
-# Check authentication operator status and conditions
-oc get authentication cluster -o yaml
-
-
-# Show only the authentication operator condition section (quick failure signal)
-oc get authentication cluster -o yaml | grep -A15 conditions
-
-
-# View oauth server pods
-oc get pods -n openshift-authentication
-
-
-# Restart OAuth pods to force configuration reload
-oc delete pod -n openshift-authentication -l app=oauth-openshift
-
-
-# View OAuth server logs
-oc logs -n openshift-authentication deployment/oauth-openshift
-
-
-# View authentication operator logs (most important when IdP fails initialization)
-oc logs -n openshift-authentication-operator deploy/authentication-operator
-
-
-# Filter authentication operator logs for errors
-oc logs -n openshift-authentication-operator deploy/authentication-operator | egrep -i error
-
-
-# Test OIDC discovery endpoint from inside the cluster
-oc run oidc-test --rm -it --restart=Never --image=curlimages/curl -- \
-curl -k https://<keycloak-host>/realms/<realm>/.well-known/openid-configuration
-
-
-# Extract the issuer value from the discovery document
-oc run oidc-test --rm -it --restart=Never --image=curlimages/curl -- \
-curl -ks https://<keycloak-host>/realms/<realm>/.well-known/openid-configuration | grep issuer
-
-
-# Verify the JWKS endpoint (used by OAuth to validate tokens)
-oc run oidc-test --rm -it --restart=Never --image=curlimages/curl -- \
-curl -ks https://<keycloak-host>/realms/<realm>/protocol/openid-connect/certs
-
-
-# Verify TLS without bypassing certificate validation
-oc run oidc-test --rm -it --restart=Never --image=curlimages/curl -- \
-curl https://<keycloak-host>/realms/<realm>/.well-known/openid-configuration
-
-
-# Inspect the certificate chain of the Keycloak route
-openssl s_client -showcerts -connect keycloak.apps.<cluster-domain>:443 </dev/null
-
-
-# Create the ConfigMap containing the Keycloak CA certificate
-oc create configmap keycloak-ca \
- --from-file=ca.crt=keycloak-ca.crt \
- -n openshift-config
-
-
-# Create the Keycloak client secret used by the OAuth IdP
-oc create secret generic keycloak-client-secret \
- --from-literal=clientSecret=<secret> \
- -n openshift-config
-
-
-# Verify the authentication operator health
-oc get clusteroperators authentication
-
-
-# Check if OAuth pods restarted after configuration change
-oc get pods -n openshift-authentication -o wide
-
-
-# Confirm user creation after successful login
-oc get users
-
-
-# Confirm identity mappings created by the OAuth login
-oc get identities
-I'm going to present what I did on my sprint tomorrow... how would you summarize for those not in the weeds what I did.
-Here’s a clear, non-deep-technical summary suitable for a sprint update.
-
-I worked on integrating Keycloak as the identity provider for the OpenShift cluster, enabling users to authenticate to OpenShift using centralized identity management rather than local accounts.
-The work involved configuring OpenShift’s OAuth system to use Keycloak via OpenID Connect, setting up the required client configuration in Keycloak, and connecting the two systems so authentication tokens issued by Keycloak could be trusted by OpenShift.
-During the implementation I ran into several issues that prevented the identity provider from activating. I systematically traced those down through the OpenShift authentication operator and OAuth components. The key problems turned out to be TLS trust between OpenShift and the Keycloak service, incorrect group mappings coming from Keycloak, and some parameter issues in the authentication request flow.
-After resolving those, the OpenShift OAuth server was able to successfully initialize the Keycloak provider, redirect users to Keycloak for login, and accept the returned identity tokens.
-The final result is that users can now authenticate to the OpenShift console through Keycloak, which enables centralized authentication and group-based access control going forward.
+```text
+1. Connectivity components
+2. Route table entries
+3. Security group rules
+4. NACL rules
+```
 
+## 1. Connectivity components that must exist
+
+For East ↔ West private API access, these are the infrastructure pieces:
+
+```text
+East VPC
+West VPC
+
+East TGW
+West TGW
+
+East VPC attachment to East TGW
+West VPC attachment to West TGW
+
+TGW peering attachment between East TGW and West TGW
+
+Private hosted zone / DNS association
+so api.<cluster-domain> resolves to the private API endpoint
+from the opposite VPC
+```
+
+Those are the “wires.”
+
+Nothing works until those exist.
+
+## 2. Route table entries that must exist
+
+Routing is where each side says, “to reach the other VPC CIDR, send traffic this way.”
+
+### East-to-West direction
+
+For traffic from East to West:
+
+```text
+East VPC subnet route table
+Destination: West VPC CIDR
+Target:      East TGW / East TGW attachment option
+```
+
+```text
+East TGW route table
+Destination: West VPC CIDR
+Target:      TGW peering attachment
+```
+
+```text
+West TGW route table
+Destination: East VPC CIDR
+Target:      West VPC attachment
+```
+
+```text
+West VPC subnet route table
+Destination: East VPC CIDR
+Target:      West TGW / West TGW attachment option
+```
+
+That last one is the return path. Without it, the request may arrive, but the response cannot get back.
+
+### West-to-East direction
+
+For traffic from West to East:
+
+```text
+West VPC subnet route table
+Destination: East VPC CIDR
+Target:      West TGW / West TGW attachment option
+```
+
+```text
+West TGW route table
+Destination: East VPC CIDR
+Target:      TGW peering attachment
+```
+
+```text
+East TGW route table
+Destination: West VPC CIDR
+Target:      East VPC attachment
+```
+
+```text
+East VPC subnet route table
+Destination: West VPC CIDR
+Target:      East TGW / East TGW attachment option
+```
+
+So yes, the subnet route tables on **both sides** need remote CIDR routes. The TGW route tables also need their own remote CIDR routes.
+
+## 3. Security group rules that must exist
+
+For OpenShift API testing, the important port is:
+
+```text
+TCP 6443
+```
+
+If testing:
+
+```text
+East jumpbox → West OpenShift API
+```
+
+then West needs to allow:
+
+```text
+West API load balancer SG
+Inbound TCP 6443 from East VPC CIDR
+```
+
+And possibly:
+
+```text
+West master/control-plane SG
+Inbound TCP 6443 from East VPC CIDR
+```
+
+For the reverse:
+
+```text
+West jumpbox → East OpenShift API
+```
+
+East needs to allow:
+
+```text
+East API load balancer SG
+Inbound TCP 6443 from West VPC CIDR
+```
+
+And possibly:
+
+```text
+East master/control-plane SG
+Inbound TCP 6443 from West VPC CIDR
+```
+
+The reason the master SG is a “possibly” is that it depends on where AWS preserves the original client source IP. If the masters see the remote jumpbox IP, the master SG needs the remote VPC CIDR. If they only see load-balancer-side traffic, the LB SG may be enough.
+
+In practice, allowing `6443` from the remote VPC CIDR on both the API LB SG and master/control-plane SG is the safer troubleshooting setup.
+
+## 4. NACL rules that must exist
+
+NACLs are stateless, so both the request and response must be allowed.
+
+For:
+
+```text
+East jumpbox → West API :6443
+```
+
+the minimum NACL logic is:
+
+```text
+East jumpbox subnet outbound
+Allow TCP 6443 to West VPC CIDR
+```
+
+```text
+West API subnet inbound
+Allow TCP 6443 from East VPC CIDR
+```
+
+```text
+West API subnet outbound
+Allow TCP ephemeral ports to East VPC CIDR
+```
+
+```text
+East jumpbox subnet inbound
+Allow TCP ephemeral ports from West VPC CIDR
+```
+
+For the reverse direction, mirror that.
+
+The ephemeral port range is usually:
+
+```text
+1024-65535
+```
+
+or whatever narrower range your environment standard uses. The key idea is that the return packet does **not** come back to the client on `6443`; it comes back to the client’s random source port.
+
+## Cleaner mental model
+
+The setup is not just:
+
+```text
+TGW peering exists, therefore it works
+```
+
+It is:
+
+```text
+VPC subnet route table gets traffic to the local TGW.
+
+Local TGW route table sends remote CIDR traffic to the peering attachment.
+
+Remote TGW route table receives traffic from peering and sends it to the remote VPC attachment.
+
+Remote VPC subnet route table must know how to send replies back to the opposite VPC.
+
+Security groups must allow 6443 at the API side.
+
+NACLs must allow both 6443 forward traffic and ephemeral return traffic.
+```
+
+The main things you changed were probably:
+
+```text
+1. Added remote CIDR routes to subnet route tables on both sides.
+2. Confirmed TGW route tables and peering routes.
+3. Added/confirmed 6443 on the API load balancer SG.
+4. Possibly added/confirmed 6443 on master/control-plane SGs.
+```
+
+The part that definitely mattered based on your result: adding `6443` to the API load balancer SG fixed at least one direction.
