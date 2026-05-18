@@ -1,228 +1,219 @@
-You’re right. A clearer way to describe this is to separate **what exists** from **what rules must be added to it**.
-
-There are really four categories:
-
 ```text
-1. Connectivity components
-2. Route table entries
-3. Security group rules
-4. NACL rules
-```
+OpenShift Cross-Region API Connectivity Checklist
 
-## 1. Connectivity components that must exist
+Goal:
+Enable private API connectivity between OpenShift clusters/VPCs across two AWS regions using Transit Gateway peering.
 
-For East ↔ West private API access, these are the infrastructure pieces:
+Example traffic paths:
+- East jumpbox -> West OpenShift API on TCP 6443
+- West jumpbox -> East OpenShift API on TCP 6443
 
-```text
-East VPC
-West VPC
 
-East TGW
-West TGW
+1. Connectivity Components Required
 
-East VPC attachment to East TGW
-West VPC attachment to West TGW
+The following infrastructure components must exist:
 
-TGW peering attachment between East TGW and West TGW
+- East VPC
+- West VPC
+- East Transit Gateway
+- West Transit Gateway
+- East VPC attachment to East TGW
+- West VPC attachment to West TGW
+- TGW peering attachment between East TGW and West TGW
+- Private DNS / Route 53 hosted zone association so the remote API hostname resolves privately
 
-Private hosted zone / DNS association
-so api.<cluster-domain> resolves to the private API endpoint
-from the opposite VPC
-```
+The TGW peering attachment is only the inter-region connection. It does not automatically make the VPCs route to each other. Route table entries are still required on both sides.
 
-Those are the “wires.”
 
-Nothing works until those exist.
+2. Route Table Requirements
 
-## 2. Route table entries that must exist
+Routing has two layers:
 
-Routing is where each side says, “to reach the other VPC CIDR, send traffic this way.”
+- VPC subnet route tables
+- TGW route tables
 
-### East-to-West direction
+The VPC subnet route table sends traffic to the local TGW.
+
+The TGW route table decides which TGW attachment receives the traffic next.
+
+
+2.1 East-to-West Path
 
 For traffic from East to West:
 
-```text
-East VPC subnet route table
+East VPC subnet route table:
 Destination: West VPC CIDR
 Target:      East TGW / East TGW attachment option
-```
 
-```text
-East TGW route table
+East TGW route table:
 Destination: West VPC CIDR
 Target:      TGW peering attachment
-```
 
-```text
-West TGW route table
+West TGW route table:
 Destination: East VPC CIDR
 Target:      West VPC attachment
-```
 
-```text
-West VPC subnet route table
+West VPC subnet route table:
 Destination: East VPC CIDR
 Target:      West TGW / West TGW attachment option
-```
 
-That last one is the return path. Without it, the request may arrive, but the response cannot get back.
+The West VPC subnet route is required for return traffic. Without it, the request may arrive, but the response cannot return to the East source.
 
-### West-to-East direction
+
+2.2 West-to-East Path
 
 For traffic from West to East:
 
-```text
-West VPC subnet route table
+West VPC subnet route table:
 Destination: East VPC CIDR
 Target:      West TGW / West TGW attachment option
-```
 
-```text
-West TGW route table
+West TGW route table:
 Destination: East VPC CIDR
 Target:      TGW peering attachment
-```
 
-```text
-East TGW route table
+East TGW route table:
 Destination: West VPC CIDR
 Target:      East VPC attachment
-```
 
-```text
-East VPC subnet route table
+East VPC subnet route table:
 Destination: West VPC CIDR
 Target:      East TGW / East TGW attachment option
-```
 
-So yes, the subnet route tables on **both sides** need remote CIDR routes. The TGW route tables also need their own remote CIDR routes.
+The East VPC subnet route is required for return traffic.
 
-## 3. Security group rules that must exist
+
+3. Security Group Requirements
 
 For OpenShift API testing, the important port is:
 
-```text
 TCP 6443
-```
 
-If testing:
+For East jumpbox -> West OpenShift API:
 
-```text
-East jumpbox → West OpenShift API
-```
-
-then West needs to allow:
-
-```text
-West API load balancer SG
+West API load balancer SG:
 Inbound TCP 6443 from East VPC CIDR
-```
 
-And possibly:
+West master/control-plane SG:
+Inbound TCP 6443 from East VPC CIDR, if the masters see the original East source IP
 
-```text
-West master/control-plane SG
-Inbound TCP 6443 from East VPC CIDR
-```
+For West jumpbox -> East OpenShift API:
 
-For the reverse:
-
-```text
-West jumpbox → East OpenShift API
-```
-
-East needs to allow:
-
-```text
-East API load balancer SG
+East API load balancer SG:
 Inbound TCP 6443 from West VPC CIDR
-```
 
-And possibly:
+East master/control-plane SG:
+Inbound TCP 6443 from West VPC CIDR, if the masters see the original West source IP
 
-```text
-East master/control-plane SG
-Inbound TCP 6443 from West VPC CIDR
-```
+The master/control-plane SG may or may not be required depending on how the load balancer and target group preserve client source IP. During troubleshooting, the safer setup is to allow TCP 6443 from the remote VPC CIDR on both:
 
-The reason the master SG is a “possibly” is that it depends on where AWS preserves the original client source IP. If the masters see the remote jumpbox IP, the master SG needs the remote VPC CIDR. If they only see load-balancer-side traffic, the LB SG may be enough.
+- API load balancer SG
+- master/control-plane SG
 
-In practice, allowing `6443` from the remote VPC CIDR on both the API LB SG and master/control-plane SG is the safer troubleshooting setup.
 
-## 4. NACL rules that must exist
+4. NACL Requirements
 
-NACLs are stateless, so both the request and response must be allowed.
+NACLs are stateless. Both the forward request and return response must be allowed.
 
-For:
+For East jumpbox -> West API on TCP 6443:
 
-```text
-East jumpbox → West API :6443
-```
-
-the minimum NACL logic is:
-
-```text
-East jumpbox subnet outbound
+East jumpbox subnet outbound:
 Allow TCP 6443 to West VPC CIDR
-```
 
-```text
-West API subnet inbound
+West API subnet inbound:
 Allow TCP 6443 from East VPC CIDR
-```
 
-```text
-West API subnet outbound
+West API subnet outbound:
 Allow TCP ephemeral ports to East VPC CIDR
-```
 
-```text
-East jumpbox subnet inbound
+East jumpbox subnet inbound:
 Allow TCP ephemeral ports from West VPC CIDR
+
+For West jumpbox -> East API on TCP 6443, mirror the same rules.
+
+Typical ephemeral range:
+
+TCP 1024-65535
+
+Some environments use a narrower approved ephemeral range. The key point is that return traffic does not come back to the client on TCP 6443. It returns to the client source port, which is usually an ephemeral port.
+
+
+5. DNS Requirements
+
+The API hostname used by the remote jumpbox must resolve to the private API endpoint.
+
+Typical OpenShift API hostname:
+
+api.<cluster-name>.<base-domain>
+
+Internal API hostname may also exist:
+
+api-int.<cluster-name>.<base-domain>
+
+Verify from the source jumpbox:
+
+dig +short api.<cluster-name>.<base-domain>
+
+Expected result:
+A private IP associated with the target cluster API endpoint.
+
+If DNS resolves to the wrong endpoint, an old record, a public IP, or nothing, the routing and security configuration can be correct but curl will still fail.
+
+
+6. Basic Test Command
+
+From the source jumpbox:
+
+curl -vk --connect-timeout 5 https://api.<cluster-name>.<base-domain>:6443/version
+
+Useful result meanings:
+
+Connected:
+Network path works. Remaining issues are TLS, API, or authentication related.
+
+Connection timed out:
+Usually routing, TGW route table association, security group, NACL, or return path issue.
+
+Connection refused:
+Routing reached something, but the destination IP/port is wrong or the service is not listening.
+
+No route to host:
+Usually local subnet routing or host/network-level routing problem.
+
+
+7. Mental Model
+
+The correct mental model is:
+
+VPC subnet route table:
+Sends remote VPC CIDR traffic to the local TGW.
+
+Local TGW route table:
+Sends remote VPC CIDR traffic to the TGW peering attachment.
+
+Remote TGW route table:
+Receives traffic from peering and sends it to the remote VPC attachment.
+
+Remote VPC subnet route table:
+Must know how to send replies back to the opposite VPC CIDR.
+
+Security groups:
+Must allow TCP 6443 on the API side.
+
+NACLs:
+Must allow TCP 6443 forward traffic and ephemeral return traffic.
+
+
+8. Main Items Changed During Troubleshooting
+
+The main fixes were:
+
+- Added remote VPC CIDR routes to subnet route tables on both sides.
+- Confirmed TGW route tables and TGW peering routes.
+- Confirmed the TGW attachment associations were using the route tables containing the needed routes.
+- Added or confirmed TCP 6443 on the API load balancer security group.
+- Added or confirmed TCP 6443 on master/control-plane security groups where needed.
+- Confirmed NACLs allowed forward TCP 6443 traffic and return ephemeral traffic.
+
+Adding TCP 6443 to the API load balancer security group was definitely required in this case because connectivity began working after that change.
 ```
-
-For the reverse direction, mirror that.
-
-The ephemeral port range is usually:
-
-```text
-1024-65535
-```
-
-or whatever narrower range your environment standard uses. The key idea is that the return packet does **not** come back to the client on `6443`; it comes back to the client’s random source port.
-
-## Cleaner mental model
-
-The setup is not just:
-
-```text
-TGW peering exists, therefore it works
-```
-
-It is:
-
-```text
-VPC subnet route table gets traffic to the local TGW.
-
-Local TGW route table sends remote CIDR traffic to the peering attachment.
-
-Remote TGW route table receives traffic from peering and sends it to the remote VPC attachment.
-
-Remote VPC subnet route table must know how to send replies back to the opposite VPC.
-
-Security groups must allow 6443 at the API side.
-
-NACLs must allow both 6443 forward traffic and ephemeral return traffic.
-```
-
-The main things you changed were probably:
-
-```text
-1. Added remote CIDR routes to subnet route tables on both sides.
-2. Confirmed TGW route tables and peering routes.
-3. Added/confirmed 6443 on the API load balancer SG.
-4. Possibly added/confirmed 6443 on master/control-plane SGs.
-```
-
-The part that definitely mattered based on your result: adding `6443` to the API load balancer SG fixed at least one direction.
