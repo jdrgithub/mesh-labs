@@ -242,3 +242,811 @@ The redirect URI is an important security control because it determines where Ke
 
 
 
+
+
+
+
+
+
+
+===================================================
+1. Install the Data Grid Operator
+Install Red Hat Data Grid Operator from OperatorHub on both OpenShift clusters.
+The operator watches Infinispan custom resources and creates the StatefulSets, services, certificates, and related OpenShift objects for the Data Grid cluster.
+2. Create a Data Grid namespace
+Use a dedicated namespace, for example:
+datagrid
+This keeps Data Grid separate from Keycloak and Yugabyte.
+3. Create the Data Grid cluster
+Create an Infinispan custom resource in each region.
+Conceptually:
+East:
+ Infinispan cluster named something like datagrid-east
+
+West:
+ Infinispan cluster named something like datagrid-west
+4. Expose the required Data Grid service endpoints
+Keycloak needs to reach its local Data Grid service.
+Cross-site Data Grid also needs East and West Data Grid clusters to reach each other.
+This is where the exact service type matters:
+local Keycloak -> local Data Grid
+cross-site Data Grid -> remote Data Grid
+The Keycloak HA guide uses a cross-site Data Grid deployment where each OpenShift cluster has its own Data Grid and the sites communicate with each other.
+==========================================================================
+
+datagrid_operator_package:
+  I used "datagrid" because that is the common Red Hat Data Grid Operator package name.
+  Confirm with:
+    oc get packagemanifests -n openshift-marketplace | grep -i data
+
+datagrid_operator_channel:
+  I used "8.5.x" because the Red Hat Keycloak HA guide calls out Data Grid 8.5.2 or newer for external Data Grid deployments.
+  Confirm available channels with:
+    oc get packagemanifest datagrid -n openshift-marketplace -o yaml | grep -A20 channels
+
+datagrid_expose_type:
+  LoadBalancer is useful for cross-site exposure.
+  If your pattern uses internal service networking or OpenShift routes instead, this should match that pattern.
+
+This playbook does not yet configure the cross-site "sites" section or remote cluster service account tokens.
+This gets the operator and one local Data Grid cluster installed on each side.
+================================================================================
+
+# East
+oc login <east-api>
+ansible-playbook install-datagrid.yml \
+  -e datagrid_site_name=east \
+  -e datagrid_cluster_name=datagrid-east
+
+# West
+oc login <west-api>
+ansible-playbook install-datagrid.yml \
+  -e datagrid_site_name=west \
+  -e datagrid_cluster_name=datagrid-west
+
+=====
+NOTES
+======
+
+---
+# playbook: install-datagrid.yml
+#
+# Run separately against each OpenShift cluster context.
+#
+# Example:
+#   oc login <east-cluster>
+#   ansible-playbook install-datagrid.yml -e datagrid_site_name=east -e datagrid_cluster_name=datagrid-east
+#
+#   oc login <west-cluster>
+#   ansible-playbook install-datagrid.yml -e datagrid_site_name=west -e datagrid_cluster_name=datagrid-west
+#
+# Requirements:
+#   ansible-galaxy collection install kubernetes.core
+#   oc login must already be authenticated to the target cluster.
+
+- name: Install Red Hat Data Grid Operator and create Data Grid cluster
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    datagrid_namespace: datagrid
+
+    # Use different names per site if desired.
+    # Example east: datagrid-east
+    # Example west: datagrid-west
+    datagrid_cluster_name: datagrid
+
+    # This is for future cross-site identity/reference.
+    # Example: east or west
+    datagrid_site_name: east
+
+    # Operator install settings.
+    datagrid_operator_namespace: datagrid
+    datagrid_operator_group_name: datagrid-operator-group
+    datagrid_subscription_name: datagrid
+    datagrid_operator_package: datagrid
+    datagrid_operator_channel: "8.5.x"
+    datagrid_operator_source: redhat-operators
+    datagrid_operator_source_namespace: openshift-marketplace
+
+    # Data Grid auth used later by Keycloak.
+    datagrid_username: developer
+    datagrid_password: strong-password
+
+    datagrid_replicas: 3
+    datagrid_storage: 1Gi
+
+    # For local Keycloak -> local Data Grid, ClusterIP is enough.
+    # For cross-site Data Grid, this may need to become LoadBalancer
+    # or match your team's cross-site exposure pattern.
+    datagrid_expose_type: LoadBalancer
+
+  tasks:
+    - name: Create Data Grid namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ datagrid_namespace }}"
+
+    - name: Create OperatorGroup for Data Grid Operator
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: "{{ datagrid_operator_group_name }}"
+            namespace: "{{ datagrid_operator_namespace }}"
+          spec:
+            targetNamespaces:
+              - "{{ datagrid_namespace }}"
+
+    - name: Create Subscription for Red Hat Data Grid Operator
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: "{{ datagrid_subscription_name }}"
+            namespace: "{{ datagrid_operator_namespace }}"
+          spec:
+            channel: "{{ datagrid_operator_channel }}"
+            installPlanApproval: Automatic
+            name: "{{ datagrid_operator_package }}"
+            source: "{{ datagrid_operator_source }}"
+            sourceNamespace: "{{ datagrid_operator_source_namespace }}"
+
+    - name: Wait for Infinispan CRD to exist
+      kubernetes.core.k8s_info:
+        api_version: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        name: infinispans.infinispan.org
+      register: infinispan_crd
+      until: infinispan_crd.resources | length > 0
+      retries: 30
+      delay: 10
+
+    - name: Create Data Grid authentication secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: datagrid-auth
+            namespace: "{{ datagrid_namespace }}"
+          type: Opaque
+          stringData:
+            identities.yaml: |
+              credentials:
+                - username: {{ datagrid_username }}
+                  password: {{ datagrid_password }}
+                  roles:
+                    - admin
+
+    - name: Create Data Grid / Infinispan cluster
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: infinispan.org/v1
+          kind: Infinispan
+          metadata:
+            name: "{{ datagrid_cluster_name }}"
+            namespace: "{{ datagrid_namespace }}"
+            labels:
+              site: "{{ datagrid_site_name }}"
+          spec:
+            replicas: "{{ datagrid_replicas }}"
+            service:
+              type: DataGrid
+              container:
+                storage: "{{ datagrid_storage }}"
+            security:
+              endpointAuthentication: true
+              endpointSecretName: datagrid-auth
+            expose:
+              type: "{{ datagrid_expose_type }}"
+
+    - name: Wait for Data Grid cluster to become WellFormed
+      kubernetes.core.k8s_info:
+        api_version: infinispan.org/v1
+        kind: Infinispan
+        name: "{{ datagrid_cluster_name }}"
+        namespace: "{{ datagrid_namespace }}"
+      register: datagrid_cr
+      until: >
+        datagrid_cr.resources | length > 0 and
+        (
+          datagrid_cr.resources[0].status.conditions | default([])
+          | selectattr('type', 'equalto', 'WellFormed')
+          | selectattr('status', 'equalto', 'True')
+          | list
+          | length
+        ) > 0
+      retries: 60
+      delay: 10
+
+    - name: Show Data Grid services
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        namespace: "{{ datagrid_namespace }}"
+      register: datagrid_services
+
+    - name: Print Data Grid services
+      ansible.builtin.debug:
+        msg: "{{ datagrid_services.resources | map(attribute='metadata.name') | list }}"
+
+=====================================
+
+4, 5, 6
+
+
+=========================================
+Yes. Below is the next Ansible layer for **steps 5–7**.
+
+This assumes the earlier playbook already installed the **Data Grid Operator** and created a local `Infinispan` CR on each cluster. The next layer does three things:
+
+```text
+5. Configure TLS and credentials
+6. Configure Data Grid cross-site replication
+7. Configure Keycloak to use external Data Grid
+```
+
+Important: the exact Keycloak CR patch may need to be adjusted to match your existing CR structure, but the core settings are the same: `cache-remote-host`, `cache-remote-port`, `cache-remote-username`, and `cache-remote-password`. Red Hat documents those remote cache options for external Data Grid, and the Keycloak Operator supports `additionalOptions` for options that are not first-class CR fields. ([Red Hat Documentation][1])
+
+```yaml
+---
+# playbook: configure-datagrid-xsite-and-keycloak.yml
+#
+# Run once per cluster.
+#
+# East example:
+#   oc login <east-cluster>
+#   ansible-playbook configure-datagrid-xsite-and-keycloak.yml \
+#     -e local_site_name=east \
+#     -e remote_site_name=west \
+#     -e datagrid_cluster_name=datagrid-east \
+#     -e remote_datagrid_cluster_name=datagrid-west \
+#     -e remote_openshift_api_url=openshift://api.<west-cluster-domain>:6443 \
+#     -e remote_token_secret_name=west-token \
+#     -e keycloak_namespace=keycloak \
+#     -e keycloak_cr_name=keycloak
+#
+# West example:
+#   oc login <west-cluster>
+#   ansible-playbook configure-datagrid-xsite-and-keycloak.yml \
+#     -e local_site_name=west \
+#     -e remote_site_name=east \
+#     -e datagrid_cluster_name=datagrid-west \
+#     -e remote_datagrid_cluster_name=datagrid-east \
+#     -e remote_openshift_api_url=openshift://api.<east-cluster-domain>:6443 \
+#     -e remote_token_secret_name=east-token \
+#     -e keycloak_namespace=keycloak \
+#     -e keycloak_cr_name=keycloak
+
+- name: Configure Data Grid cross-site and Keycloak external cache
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    datagrid_namespace: datagrid
+    datagrid_cluster_name: datagrid
+    remote_datagrid_cluster_name: datagrid
+
+    local_site_name: east
+    remote_site_name: west
+
+    # For managed cross-site connections, Data Grid Operator expects the
+    # remote OpenShift API URL in openshift:// form.
+    remote_openshift_api_url: "openshift://api.<remote-cluster-domain>:6443"
+
+    # This secret must already exist in datagrid_namespace.
+    # It contains the service account token for the remote OpenShift cluster.
+    remote_token_secret_name: "remote-token"
+
+    # Data Grid user used by Keycloak.
+    datagrid_username: developer
+    datagrid_password: strong-password
+    datagrid_auth_secret_name: datagrid-auth
+
+    # Hot Rod endpoint used by Keycloak for remote cache access.
+    # This is local-to-cluster access, not the cross-site xsite endpoint.
+    datagrid_hotrod_port: "11222"
+    datagrid_hotrod_host: "{{ datagrid_cluster_name }}.{{ datagrid_namespace }}.svc.cluster.local"
+
+    # Cross-site service exposure.
+    # Data Grid Operator supports NodePort, LoadBalancer, or Route for xsite.
+    # For private AWS/OpenShift clusters, LoadBalancer usually maps well
+    # to internal LB patterns, but match your team's standard.
+    xsite_expose_type: LoadBalancer
+    xsite_expose_port: 7900
+    xsite_max_relay_nodes: 1
+
+    keycloak_namespace: keycloak
+    keycloak_cr_name: keycloak
+    keycloak_remote_cache_secret_name: keycloak-datagrid-remote-cache
+
+  tasks:
+    ###########################################################################
+    # 5. Credentials for Data Grid and Keycloak
+    ###########################################################################
+
+    - name: Ensure Data Grid authentication secret exists
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ datagrid_auth_secret_name }}"
+            namespace: "{{ datagrid_namespace }}"
+          type: Opaque
+          stringData:
+            identities.yaml: |
+              credentials:
+                - username: {{ datagrid_username }}
+                  password: {{ datagrid_password }}
+                  roles:
+                    - admin
+
+    - name: Create Keycloak secret for remote Data Grid credentials
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ keycloak_remote_cache_secret_name }}"
+            namespace: "{{ keycloak_namespace }}"
+          type: Opaque
+          stringData:
+            username: "{{ datagrid_username }}"
+            password: "{{ datagrid_password }}"
+
+    ###########################################################################
+    # 6. Data Grid cross-site replication
+    ###########################################################################
+    #
+    # This patches/creates the Infinispan CR with:
+    #
+    # local site name:
+    #   east or west
+    #
+    # remote location:
+    #   opposite site name
+    #   remote Infinispan cluster name
+    #   remote namespace
+    #   remote OpenShift API URL
+    #   remote service account token secret
+    #
+    # Red Hat documents that cross-site uses spec.service.sites.local.name,
+    # spec.service.sites.local.expose.type, and spec.service.sites.locations.
+    ###########################################################################
+
+    - name: Configure Data Grid Infinispan CR with cross-site settings
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: infinispan.org/v1
+          kind: Infinispan
+          metadata:
+            name: "{{ datagrid_cluster_name }}"
+            namespace: "{{ datagrid_namespace }}"
+          spec:
+            replicas: 3
+            service:
+              type: DataGrid
+              container:
+                storage: 1Gi
+              sites:
+                local:
+                  name: "{{ local_site_name }}"
+                  expose:
+                    type: "{{ xsite_expose_type }}"
+                    port: "{{ xsite_expose_port }}"
+                  maxRelayNodes: "{{ xsite_max_relay_nodes }}"
+                locations:
+                  - name: "{{ remote_site_name }}"
+                    clusterName: "{{ remote_datagrid_cluster_name }}"
+                    namespace: "{{ datagrid_namespace }}"
+                    url: "{{ remote_openshift_api_url }}"
+                    secretName: "{{ remote_token_secret_name }}"
+            security:
+              endpointAuthentication: true
+              endpointSecretName: "{{ datagrid_auth_secret_name }}"
+
+    - name: Wait for Data Grid CR to be present
+      kubernetes.core.k8s_info:
+        api_version: infinispan.org/v1
+        kind: Infinispan
+        name: "{{ datagrid_cluster_name }}"
+        namespace: "{{ datagrid_namespace }}"
+      register: datagrid_cr
+      until: datagrid_cr.resources | length > 0
+      retries: 30
+      delay: 10
+
+    ###########################################################################
+    # 6b. Create Keycloak-required caches in Data Grid
+    ###########################################################################
+    #
+    # Red Hat build of Keycloak HA docs call out these required caches:
+    #   actionTokens
+    #   authenticationSessions
+    #   loginFailures
+    #   work
+    #
+    # The Cache CR format can vary slightly by Data Grid Operator version.
+    # This gives the Ansible pattern. If your operator rejects the template,
+    # check:
+    #   oc explain cache.spec
+    #   oc explain cache.spec.template
+    ###########################################################################
+
+    - name: Create Keycloak cache CRs in Data Grid
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: infinispan.org/v2alpha1
+          kind: Cache
+          metadata:
+            name: "{{ item }}"
+            namespace: "{{ datagrid_namespace }}"
+          spec:
+            clusterName: "{{ datagrid_cluster_name }}"
+            name: "{{ item }}"
+            template: |
+              distributedCache:
+                owners: "2"
+                mode: "SYNC"
+                backups:
+                  {{ remote_site_name }}:
+                    backup:
+                      strategy: "ASYNC"
+      loop:
+        - actionTokens
+        - authenticationSessions
+        - loginFailures
+        - work
+
+    ###########################################################################
+    # 7. Configure Keycloak to use external Data Grid
+    ###########################################################################
+    #
+    # This patches the Keycloak CR with remote cache options.
+    #
+    # Keycloak remote cache options:
+    #   cache-remote-host
+    #   cache-remote-port
+    #   cache-remote-username
+    #   cache-remote-password
+    #
+    # The password and username are referenced from a Secret.
+    ###########################################################################
+
+    - name: Configure Keycloak CR to use external Data Grid remote cache
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: k8s.keycloak.org/v2alpha1
+          kind: Keycloak
+          metadata:
+            name: "{{ keycloak_cr_name }}"
+            namespace: "{{ keycloak_namespace }}"
+          spec:
+            additionalOptions:
+              - name: cache-remote-host
+                value: "{{ datagrid_hotrod_host }}"
+              - name: cache-remote-port
+                value: "{{ datagrid_hotrod_port }}"
+              - name: cache-remote-username
+                secret:
+                  name: "{{ keycloak_remote_cache_secret_name }}"
+                  key: username
+              - name: cache-remote-password
+                secret:
+                  name: "{{ keycloak_remote_cache_secret_name }}"
+                  key: password
+
+    - name: Show Data Grid CR status
+      kubernetes.core.k8s_info:
+        api_version: infinispan.org/v1
+        kind: Infinispan
+        name: "{{ datagrid_cluster_name }}"
+        namespace: "{{ datagrid_namespace }}"
+      register: final_datagrid_status
+
+    - name: Print Data Grid status summary
+      ansible.builtin.debug:
+        var: final_datagrid_status.resources[0].status
+
+    - name: Show Keycloak CR
+      kubernetes.core.k8s_info:
+        api_version: k8s.keycloak.org/v2alpha1
+        kind: Keycloak
+        name: "{{ keycloak_cr_name }}"
+        namespace: "{{ keycloak_namespace }}"
+      register: final_keycloak_cr
+
+    - name: Print Keycloak additionalOptions
+      ansible.builtin.debug:
+        var: final_keycloak_cr.resources[0].spec.additionalOptions
+```
+
+A few corrections/notes are important before this goes into automation.
+
+For **cross-site**, Data Grid Operator uses the `spec.service.sites.local.name`, `spec.service.sites.local.expose.type`, and `spec.service.sites.locations` fields. The operator supports `NodePort`, `LoadBalancer`, and `Route`; if using `Route`, Red Hat says a keystore is required, and cross-site replication does not support the OpenShift service CA, so custom certificates are needed for that cross-site encryption path. ([Red Hat Documentation][2])
+
+For **Keycloak-required caches**, the Red Hat build of Keycloak HA guide calls out these Data Grid caches as required: `actionTokens`, `authenticationSessions`, `loginFailures`, and `work`. It also recommends creating them with Data Grid `Cache` CRs before Keycloak starts. ([Red Hat Documentation][3])
+
+For **Keycloak remote cache**, the remote Data Grid Hot Rod port is normally:
+
+```text
+11222
+```
+
+That is different from the cross-site Data Grid replication port, which is commonly:
+
+```text
+7900
+```
+
+So keep these separate:
+
+```text
+Keycloak -> local Data Grid:
+  TCP 11222
+
+East Data Grid <-> West Data Grid cross-site:
+  TCP 7900, or whatever xsite expose port is configured
+```
+
+For a private AWS/OpenShift setup, the most practical first pass is usually:
+
+```text
+Data Grid xsite expose type:
+  LoadBalancer
+
+LB type:
+  internal
+
+Network:
+  allow East Data Grid xsite endpoint <-> West Data Grid xsite endpoint
+
+Keycloak:
+  only talks to local Data Grid service on 11222
+```
+
+The playbook above assumes the remote OpenShift service account token secret already exists. That part is normally a separate setup step because each cluster needs a token that allows the local Data Grid Operator to inspect/connect to the remote site. Red Hat explicitly lists service account token exchange as a prerequisite for managed cross-site connections. ([Red Hat Documentation][2])
+
+[1]: https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak/24.0/html/high_availability_guide/connect-keycloak-to-external-infinispan- "Chapter 7. Connect Red Hat build of Keycloak with an external Data Grid | High Availability Guide | Red Hat build of Keycloak | 24.0 | Red Hat Documentation"
+[2]: https://docs.redhat.com/en/documentation/red_hat_data_grid/8.5/html/data_grid_operator_guide/setting-up-xsite "Chapter 13. Setting up cross-site replication | Data Grid Operator Guide | Red Hat Data Grid | 8.5 | Red Hat Documentation"
+[3]: https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak/26.2/html-single/high_availability_guide/index "High Availability Guide | Red Hat build of Keycloak | 26.2 | Red Hat Documentation"
+
+
+
+
+========================================
+YUGABYTE STUFF
+=======================================
+Below is the guidance to give the Yugabyte side. This is written as requirements, not as a question list.
+
+```text
+YugabyteDB xCluster Requirements for Keycloak Active/Standby DR
+
+Goal:
+Support manual DNS failover for Keycloak across East and West OpenShift clusters.
+
+Important distinction:
+Infinispan / Red Hat Data Grid handles the Keycloak cache/session cross-site layer.
+YugabyteDB xCluster handles the persistent relational database replication layer.
+
+These are separate layers and both are required.
+Infinispan does not replicate the Yugabyte database.
+Yugabyte xCluster does not replace Infinispan/Data Grid.
+
+
+1. Required Yugabyte Topology
+
+Set up two independent YugabyteDB universes:
+
+East Yugabyte universe:
+  Normal active/source database side.
+  Keycloak writes here during normal operation.
+
+West Yugabyte universe:
+  Standby/target database side.
+  Receives replicated Keycloak database changes from East.
+  Becomes the writable database side during manual failover.
+
+Replication model:
+  Use YugabyteDB xCluster replication.
+  Start with unidirectional active/standby replication:
+
+    East -> West
+
+Do not configure bidirectional/multi-writer replication unless the architecture explicitly calls for that. For this Keycloak manual failover pattern, the safer model is single-writer active/standby.
+
+Yugabyte describes xCluster as asynchronous replication between independent YugabyteDB universes, with a source/producer universe and a target/consumer universe. It supports unidirectional and bidirectional replication, but this design should use unidirectional active/standby. 
+Source: YugabyteDB xCluster documentation.
+
+
+2. What Must Be Replicated
+
+Replicate the Keycloak YSQL database and all required Keycloak tables.
+
+Expected database:
+  keycloak
+
+Expected application access:
+  Keycloak connects through YSQL/Postgres-compatible access.
+
+Application port:
+  TCP 5433
+
+The target/standby universe must contain the replicated Keycloak data before DNS failover is considered usable.
+
+
+3. Required Network Connectivity
+
+Application DB connectivity:
+
+  East Keycloak -> East Yugabyte YSQL endpoint :5433
+  West Keycloak -> West Yugabyte YSQL endpoint :5433
+
+Replication connectivity between universes:
+
+  East Yugabyte masters/tservers -> West Yugabyte masters/tservers
+  West Yugabyte masters/tservers -> East Yugabyte masters/tservers
+
+Required xCluster ports:
+
+  YB-Master RPC:  TCP 7100
+  YB-TServer RPC: TCP 9100
+
+Yugabyte documentation states that xCluster uses the yb-master RPC port 7100 for initial communication and the yb-tserver RPC port 9100 to retrieve data changes. These ports must be open in both directions between nodes in both database clusters/universes.
+
+If Yugabyte node DNS names are used, those DNS names must resolve from all Yugabyte nodes on both sides.
+
+
+4. Required Stable Endpoints
+
+Provide stable endpoints for Keycloak application access:
+
+  East Keycloak DB endpoint:
+    <east-yugabyte-ysql-endpoint>:5433
+
+  West Keycloak DB endpoint:
+    <west-yugabyte-ysql-endpoint>:5433
+
+Provide the master/tserver endpoint list needed for xCluster setup and status checks:
+
+  East universe master addresses
+  East universe tserver addresses, if required by the setup method
+
+  West universe master addresses
+  West universe tserver addresses, if required by the setup method
+
+Do not base the design on temporary pod IPs unless the Yugabyte deployment method explicitly provides stable pod DNS names and those names are routable cross-region.
+
+
+5. Required xCluster Configuration
+
+Configure xCluster replication with:
+
+  Source/producer universe: East
+  Target/consumer universe: West
+  Replication mode: unidirectional active/standby
+  Scope: Keycloak YSQL database and required tables
+
+The implementation method may be YugabyteDB Anywhere, yb-admin, yugabyted, or operator-specific tooling depending on how Yugabyte was installed.
+
+The DB team must provide the exact commands or UI procedure used to:
+
+  create the xCluster replication
+  check replication status
+  check replication lag / safe time
+  pause or stop replication
+  promote West during failover
+  handle failback or rebuild East after a failover
+
+
+6. Required Validation
+
+Basic local application tests:
+
+  From East Keycloak namespace or test pod:
+    psql to East Yugabyte on 5433
+
+  From West Keycloak namespace or test pod:
+    psql to West Yugabyte on 5433
+
+Basic cross-region xCluster network tests:
+
+  East Yugabyte side can reach West Yugabyte master RPC on 7100
+  East Yugabyte side can reach West Yugabyte tserver RPC on 9100
+  West Yugabyte side can reach East Yugabyte master RPC on 7100
+  West Yugabyte side can reach East Yugabyte tserver RPC on 9100
+
+Replication validation:
+
+  Create a harmless test table or controlled test object in the replicated database on East.
+  Insert a test row on East.
+  Confirm it appears on West after replication delay.
+  Confirm replication health/status is clean.
+  Confirm replication lag is acceptable.
+
+Do not validate first by manually modifying random Keycloak production tables.
+
+
+7. Manual Failover Requirement
+
+Manual DNS switchover is only the traffic-routing step. The database failover procedure must happen before or alongside DNS movement.
+
+Required manual failover flow:
+
+  1. Declare East failed or intentionally stop East Keycloak.
+  2. Ensure only one Keycloak side can write.
+  3. Prevent split brain.
+  4. Pause/stop/transition xCluster according to Yugabyte procedure.
+  5. Promote or enable West Yugabyte for writes.
+  6. Start or enable West Keycloak against West Yugabyte.
+  7. Manually switch DNS to West Keycloak.
+  8. After East recovers, decide whether to rebuild East, reverse replication, or fail back using the documented Yugabyte procedure.
+
+The key rule:
+  Do not allow East Keycloak and West Keycloak to write to independent databases at the same time.
+
+
+8. Deliverables Needed from the Yugabyte Implementation
+
+Provide:
+
+  East Yugabyte YSQL endpoint for Keycloak
+  West Yugabyte YSQL endpoint for Keycloak
+  East universe master addresses
+  West universe master addresses
+  Confirmation that ports 7100 and 9100 are reachable between universes
+  Confirmation that port 5433 is reachable from local Keycloak workloads
+  xCluster replication ID/name
+  List of replicated database(s) and tables
+  Replication status command or dashboard location
+  Replication lag/safe-time check
+  Planned switchover procedure
+  Unplanned failover procedure
+  Failback/rebuild procedure
+  Any required credentials/secrets and where they are stored
+
+
+9. Relationship to Infinispan/Data Grid
+
+Infinispan/Data Grid:
+  Keycloak cache/session cross-site layer.
+  Installed and configured separately from Yugabyte.
+  Handles Keycloak distributed cache and cross-site cache behavior.
+
+Yugabyte xCluster:
+  Persistent relational database replication layer.
+  Configured between Yugabyte universes.
+  Handles durable Keycloak database state.
+
+Both are used together:
+
+  Keycloak active/standby HA = DNS failover + Data Grid/Infinispan cache HA + Yugabyte xCluster database replication.
+```
+
+The two most important asks are: **configure East → West xCluster for the Keycloak database**, and **provide a written DB failover/promote/failback runbook**. Yugabyte xCluster is asynchronous, so the team also needs to state the expected RPO and how replication lag will be checked before a planned DNS switchover.
+
+
+
+
+
+
+
+
+
