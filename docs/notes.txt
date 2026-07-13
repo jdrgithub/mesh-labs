@@ -1,19 +1,1 @@
-Source subnet route table:
-  Remote VPC CIDR → TGW
 
-Destination API subnet route table:
-  Source VPC CIDR → TGW
-
-Destination SG:
-  inbound TCP 6443 from Source VPC CIDR
-
-Source SG:
-  outbound TCP 6443 to Destination VPC CIDR
-
-Source NACL:
-  outbound TCP 6443
-  inbound TCP 1024-65535
-
-Destination NACL:
-  inbound TCP 6443
-  outbound TCP 1024-65535
